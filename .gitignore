@@ -1,0 +1,45 @@
+# Generated project sanity
+/a-module/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv/
+
+# Tox / nox
+.tox/
+.nox/
+
+# Coverage / tests
+.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pdm-python
+
+# Docs
+site/
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# direnv
+.direnv/

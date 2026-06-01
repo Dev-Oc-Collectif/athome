@@ -1,0 +1,184 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "athome"
+description = "Agnostic developer environment orchestrator by Dev'Oc Collectif."
+version = "0.0.1"
+authors = [
+    {name = "Clément Dubos", email = "contact@cdubos.fr"}
+]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "click",
+    "typer",
+    "copier",
+    "rich"
+]
+
+[project.scripts]
+athome = "athome.main:app"
+
+[project.entry-points."athome.git_managers"]
+gh = "athome.git_managers.gh:GhManager"
+
+[dependency-groups]
+dev = [
+    { include-group = "ai" },
+    { include-group = "dx" },
+    { include-group = "docs" },
+    { include-group = "lint" },
+    { include-group = "typing" },
+    { include-group = "tests" },
+    { include-group = "security" },
+]
+ai = [
+    "library-skills",
+]
+docs = [
+    "zensical>=0.0.43",
+]
+dx = [
+    "prek>=0.4.0",
+    "commitizen>=4.16.2",
+    "tox>=4.54.0",
+    "tox-uv",
+    "rust-just>=1.51.0"
+]
+lint = [
+    "ruff>=0.15.13",
+    "ssort>=0.16.0",
+    "zizmor >=1.25.2",
+]
+security = [
+    "bandit>=1.9.4",
+]
+typing = [
+    "mypy>=2.1.0",
+    "types-setuptools",
+    "ty>=0.0.37",
+]
+tests = [
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.flit.module]
+name = "athome"
+
+[tool.coverage.run]
+source_pkgs = ["athome"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.mypy]
+python_version = "3.14"
+warn_unused_configs = true
+warn_redundant_casts = true
+show_error_codes = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "athome.*"
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+warn_unused_ignores = true
+no_implicit_reexport = true
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.ruff]
+fix = true
+line-length = 100
+preview = true
+lint.select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # Warning
+    "W",
+    # Mccabe
+    "C90",
+    # isort
+    "I",
+    # pep8-naming
+    "N",
+    # pydocstyle
+    "D",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-annotations
+    "ANN",
+    # bandit
+    "S",
+    # flake8-builtins
+    "A",
+    # flake8-commas
+    "COM",
+    # flake8-future-annotations
+    "FA",
+    # flake8-logging
+    "LOG",
+    # flake8-logging-format
+    "G",
+    # flake8-print
+    "T20",
+    # flake8-pytest-style
+    "PT",
+    # flake8-simplify
+    "SIM",
+    # flake8-type-checking
+    "TCH",
+    # tryceratops
+    "TRY",
+]
+lint.ignore = [
+    "D107",
+    "D203",
+    "D212",
+    "D213",
+    "COM812",
+    "TC003",
+    "S404",
+    "S607",
+    "ANN401",
+]
+lint.per-file-ignores."tests/**.py" = [
+    "D",
+    "S101",
+    "TC001",
+]
+lint.isort.force-single-line = true
+format.quote-style = "single"
+format.docstring-code-format = true
+format.preview = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.0.1"
+version_files = [
+    "pyproject.toml:version",
+    "athome/__init__.py"
+]
+style = [
+    ["qmark", "fg:#ff9d00 bold"],
+    ["question", "bold"],
+    ["answer", "fg:#ff9d00 bold"],
+    ["pointer", "fg:#ff9d00 bold"],
+    ["highlighted", "fg:#ff9d00 bold"],
+    ["selected", "fg:#cc5454"],
+    ["separator", "fg:#cc5454"],
+    ["instruction", ""],
+    ["text", ""],
+    ["disabled", "fg:#858585 italic"]
+]
