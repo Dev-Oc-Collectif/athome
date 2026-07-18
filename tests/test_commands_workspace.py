@@ -8,16 +8,19 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from athome.commands.workspace import app
-from athome.config import AthomeConfig
-from athome.config import GitConfig
+from athome.cli.workspaces import app
+from athome.definitions.config import AthomeConfig
+from athome.definitions.config import DestinationConfig
+from athome.definitions.config import OwnerConfig
+from athome.definitions.config import RepoConfig
+from athome.definitions.config import WorkspaceConfig
 
 runner = CliRunner()
 
 _CFG_WITH_OWNERS = AthomeConfig(
-    git=GitConfig(
-        owners={'gh': {'org': 'https://github.com/my-org'}},
-        repositories={'gh': {'dotfiles': 'https://github.com/user/dotfiles'}},
+    workspace=WorkspaceConfig(
+        owners={'my-org': OwnerConfig(source='https://github.com/my-org', manager='gh')},
+        repos={'dotfiles': RepoConfig(source='https://github.com/user/dotfiles', manager='gh')},
     )
 )
 _EMPTY_CFG = AthomeConfig()
@@ -32,112 +35,147 @@ class TestWorkspaceSync:
     def test_no_owners_prints_guidance(self, tmp_path: Path) -> None:
         with patch('athome.commands.workspace.load_config', return_value=_EMPTY_CFG):
             result = runner.invoke(app, ['sync', '--dest', str(tmp_path)])
-        assert 'git.owners' in result.stderr
+        assert 'workspace.owners' in result.stderr
 
-    def test_calls_sync_workspace_for_each_owner(self, tmp_path: Path) -> None:
+    def test_calls_sync_for_each_owner(self, tmp_path: Path) -> None:
         mock_gh = MagicMock()
         with (
             patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
-            patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}),
+            patch(
+                'athome.commands.workspace._registry.all',
+                return_value={'gh': mock_gh},
+            ),
         ):
             result = runner.invoke(app, ['sync', '--dest', str(tmp_path)])
         assert result.exit_code == 0
-        mock_gh.sync_workspace.assert_called_once_with(
+        mock_gh.sync.assert_called_once_with(
             'https://github.com/my-org',
-            tmp_path / 'gh' / 'org',
+            tmp_path / 'my-org',
         )
 
     def test_calls_clone_for_each_individual_repo(self, tmp_path: Path) -> None:
         mock_gh = MagicMock()
         with (
             patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
-            patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}),
+            patch(
+                'athome.commands.workspace._registry.all',
+                return_value={'gh': mock_gh},
+            ),
         ):
             result = runner.invoke(app, ['sync', '--dest', str(tmp_path)])
         assert result.exit_code == 0
         mock_gh.clone.assert_called_once_with(
             'https://github.com/user/dotfiles',
-            tmp_path / 'gh' / 'dotfiles',
+            tmp_path / 'dotfiles',
         )
 
     def test_prints_syncing_message(self, tmp_path: Path) -> None:
         mock_gh = MagicMock()
         with (
             patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
-            patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}),
+            patch(
+                'athome.commands.workspace._registry.all',
+                return_value={'gh': mock_gh},
+            ),
         ):
             result = runner.invoke(app, ['sync', '--dest', str(tmp_path)])
-        assert 'gh/org' in result.output
+        assert 'my-org' in result.output
 
     def test_short_dest_option(self, tmp_path: Path) -> None:
         mock_gh = MagicMock()
         with (
             patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
-            patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}),
+            patch(
+                'athome.commands.workspace._registry.all',
+                return_value={'gh': mock_gh},
+            ),
         ):
             result = runner.invoke(app, ['sync', '-d', str(tmp_path)])
         assert result.exit_code == 0
 
-    def test_unknown_provider_skips_with_warning(self, tmp_path: Path) -> None:
-        cfg = AthomeConfig(git=GitConfig(owners={'unknown': {'org': 'https://some-git/org'}}))
-        with patch('athome.commands.workspace.load_config', return_value=cfg):
+    def test_unknown_manager_skips_with_warning(self, tmp_path: Path) -> None:
+        cfg = AthomeConfig(
+            workspace=WorkspaceConfig(
+                owners={'work': OwnerConfig(source='https://some-git/org', manager='unknown')}
+            )
+        )
+        with (
+            patch('athome.commands.workspace.load_config', return_value=cfg),
+            patch('athome.commands.workspace._registry.all', return_value={}),
+        ):
             result = runner.invoke(app, ['sync', '--dest', str(tmp_path)])
         assert 'unknown' in result.stderr
 
-    def test_uses_git_workspace_from_config_as_default_dest(self) -> None:
+    def test_uses_workspace_destination_from_config_as_default_dest(self) -> None:
         custom = Path('/custom/workspace')
         cfg = AthomeConfig(
-            git=GitConfig(
-                workspace=custom,
-                owners={'gh': {'org': 'https://github.com/my-org'}},
+            workspace=WorkspaceConfig(
+                destination=DestinationConfig(target=custom),
+                owners={'my-org': OwnerConfig(source='https://github.com/my-org', manager='gh')},
             )
         )
         mock_gh = MagicMock()
         with (
             patch('athome.commands.workspace.load_config', return_value=cfg),
-            patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}),
+            patch(
+                'athome.commands.workspace._registry.all',
+                return_value={'gh': mock_gh},
+            ),
         ):
             result = runner.invoke(app, ['sync'])
         assert result.exit_code == 0
-        mock_gh.sync_workspace.assert_called_once_with(
+        mock_gh.sync.assert_called_once_with(
             'https://github.com/my-org',
-            custom / 'gh' / 'org',
+            custom / 'my-org',
         )
 
 
 class TestWorkspaceList:
-    def test_no_provider_lists_configured_providers(self) -> None:
+    def test_no_owner_lists_configured_owners(self) -> None:
+        with patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS):
+            result = runner.invoke(app, ['list'])
+        assert 'my-org' in result.output
+        assert result.exit_code == 0
+
+    def test_list_shows_manager(self) -> None:
         with patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS):
             result = runner.invoke(app, ['list'])
         assert 'gh' in result.output
-        assert result.exit_code == 0
 
-    def test_no_provider_empty_config_exits_one(self) -> None:
+    def test_no_owner_empty_config_exits_one(self) -> None:
         with patch('athome.commands.workspace.load_config', return_value=_EMPTY_CFG):
             result = runner.invoke(app, ['list'])
         assert result.exit_code == 1
 
-    def test_no_provider_empty_config_prints_error(self) -> None:
+    def test_no_owner_empty_config_prints_error(self) -> None:
         with patch('athome.commands.workspace.load_config', return_value=_EMPTY_CFG):
             result = runner.invoke(app, ['list'])
         assert 'configured' in result.stderr
 
-    def test_known_provider_calls_list_repos_without_owner(self) -> None:
+    def test_known_owner_calls_list_repos(self) -> None:
         mock_gh = MagicMock()
-        with patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}):
-            runner.invoke(app, ['list', 'gh'])
+        with (
+            patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
+            patch(
+                'athome.commands.workspace._registry.all',
+                return_value={'gh': mock_gh},
+            ),
+        ):
+            runner.invoke(app, ['list', 'my-org'])
         mock_gh.list_repos.assert_called_once_with(None)
 
-    def test_known_provider_with_owner_passes_owner(self) -> None:
-        mock_gh = MagicMock()
-        with patch.dict('athome.commands.workspace._MANAGERS', {'gh': mock_gh}):
-            runner.invoke(app, ['list', 'gh', '--owner', 'my-org'])
-        mock_gh.list_repos.assert_called_once_with('my-org')
-
-    def test_unknown_provider_exits_one(self) -> None:
-        result = runner.invoke(app, ['list', 'unknown'])
+    def test_unknown_owner_exits_one(self) -> None:
+        with (
+            patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
+            patch('athome.commands.workspace._registry.all', return_value={}),
+        ):
+            result = runner.invoke(app, ['list', 'unknown'])
         assert result.exit_code == 1
 
-    def test_unknown_provider_prints_error(self) -> None:
-        result = runner.invoke(app, ['list', 'unknown'])
+    def test_unknown_owner_prints_error(self) -> None:
+        with (
+            patch('athome.commands.workspace.load_config', return_value=_CFG_WITH_OWNERS),
+            patch('athome.commands.workspace._registry.all', return_value={}),
+        ):
+            result = runner.invoke(app, ['list', 'unknown'])
         assert 'unknown' in result.stderr

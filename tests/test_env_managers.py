@@ -1,4 +1,4 @@
-"""Tests for MiseManager — EnvManager backed by mise."""
+"""Tests for EnvManager implementations — DirenvManager and MiseEnvManager."""
 
 from __future__ import annotations
 
@@ -7,127 +7,167 @@ from unittest.mock import patch
 
 import pytest
 
-from athome.env_managers.mise import MiseManager
+from athome.contexts.managers.direnv import DirenvManager
+from athome.contexts.managers.mise import MiseEnvManager
 from athome.exceptions import ToolNotFoundError
-from athome.interfaces.env_manager import EnvManager
+from athome.definitions.managers.context import ContextManager
+
+_BASE_PATCH = 'athome.interfaces.base.shutil.which'
 
 
-@pytest.fixture(autouse=True)
-def mise_available() -> Generator[None]:  # type: ignore[return]
-    with patch('athome.env_managers.mise.shutil.which', return_value='/usr/bin/mise'):
+# ---------------------------------------------------------------------------
+# DirenvManager
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def direnv_available() -> Generator[None]:  # type: ignore[return]
+    with patch(_BASE_PATCH, return_value='/usr/bin/direnv'):
         yield
 
 
-class TestMiseManagerContract:
+class TestDirenvManagerContract:
     def test_is_env_manager(self) -> None:
-        assert issubclass(MiseManager, EnvManager)
+        assert issubclass(DirenvManager, ContextManager)
 
-    def test_instantiates(self) -> None:
-        assert isinstance(MiseManager(), MiseManager)
+    def test_instantiates(self, direnv_available: None) -> None:
+        assert isinstance(DirenvManager(), DirenvManager)
 
 
-class TestInstall:
-    def test_install_without_version(self) -> None:
-        mgr = MiseManager()
+class TestDirenvLoad:
+    def test_allows_envrc(self, direnv_available: None) -> None:
+        mgr = DirenvManager()
+        with patch('athome.env_managers.direnv.subprocess.run') as mock_run:
+            mgr.load()
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        assert ['direnv', 'allow'] in calls
+
+    def test_evals_envrc(self, direnv_available: None) -> None:
+        mgr = DirenvManager()
+        with patch('athome.env_managers.direnv.subprocess.run') as mock_run:
+            mgr.load()
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        assert ['direnv', 'exec', '.', 'true'] in calls
+
+
+class TestDirenvActivate:
+    def test_defaults_to_bash(self, direnv_available: None) -> None:
+        mgr = DirenvManager()
+        with patch('athome.env_managers.direnv.subprocess.run') as mock_run:
+            mgr.activate()
+        assert mock_run.call_args[0][0] == ['direnv', 'hook', 'bash']
+
+    def test_uses_given_shell(self, direnv_available: None) -> None:
+        mgr = DirenvManager()
+        with patch('athome.env_managers.direnv.subprocess.run') as mock_run:
+            mgr.activate('zsh')
+        assert mock_run.call_args[0][0] == ['direnv', 'hook', 'zsh']
+
+    def test_fish_shell(self, direnv_available: None) -> None:
+        mgr = DirenvManager()
+        with patch('athome.env_managers.direnv.subprocess.run') as mock_run:
+            mgr.activate('fish')
+        assert mock_run.call_args[0][0] == ['direnv', 'hook', 'fish']
+
+
+class TestDirenvNotFound:
+    def test_raises_when_direnv_missing(self) -> None:
+        with (
+            patch(_BASE_PATCH, return_value=None),
+            pytest.raises(ToolNotFoundError),
+        ):
+            DirenvManager()
+
+    def test_error_names_tool(self) -> None:
+        with (
+            patch(_BASE_PATCH, return_value=None),
+            pytest.raises(ToolNotFoundError) as exc_info,
+        ):
+            DirenvManager()
+        assert 'direnv' in exc_info.value.format_message()
+
+    def test_error_includes_install_hint(self) -> None:
+        with (
+            patch(_BASE_PATCH, return_value=None),
+            pytest.raises(ToolNotFoundError) as exc_info,
+        ):
+            DirenvManager()
+        assert 'direnv.net' in exc_info.value.format_message()
+
+
+# ---------------------------------------------------------------------------
+# MiseEnvManager
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mise_available() -> Generator[None]:  # type: ignore[return]
+    with patch(_BASE_PATCH, return_value='/usr/bin/mise'):
+        yield
+
+
+class TestMiseEnvManagerContract:
+    def test_is_env_manager(self) -> None:
+        assert issubclass(MiseEnvManager, ContextManager)
+
+    def test_instantiates(self, mise_available: None) -> None:
+        assert isinstance(MiseEnvManager(), MiseEnvManager)
+
+
+class TestMiseEnvLoad:
+    def test_calls_mise_trust(self, mise_available: None) -> None:
+        mgr = MiseEnvManager()
         with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.install('python')
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'install', 'python']
+            mgr.load()
+        assert mock_run.call_args[0][0] == ['mise', 'trust']
 
-    def test_install_with_version(self) -> None:
-        mgr = MiseManager()
+    def test_check_is_true(self, mise_available: None) -> None:
+        mgr = MiseEnvManager()
         with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.install('python', '3.12')
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'install', 'python@3.12']
-
-    def test_check_is_true(self) -> None:
-        mgr = MiseManager()
-        with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.install('node')
+            mgr.load()
         assert mock_run.call_args[1].get('check') is True
 
 
-class TestUpgrade:
-    def test_upgrade_all_tools(self) -> None:
-        mgr = MiseManager()
+class TestMiseEnvActivate:
+    def test_defaults_to_bash(self, mise_available: None) -> None:
+        mgr = MiseEnvManager()
         with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.upgrade()
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'upgrade', '--yes']
+            mgr.activate()
+        assert mock_run.call_args[0][0] == ['mise', 'activate', 'bash']
 
-    def test_upgrade_specific_tool(self) -> None:
-        mgr = MiseManager()
+    def test_uses_given_shell(self, mise_available: None) -> None:
+        mgr = MiseEnvManager()
         with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.upgrade('node')
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'upgrade', '--yes', 'node']
+            mgr.activate('zsh')
+        assert mock_run.call_args[0][0] == ['mise', 'activate', 'zsh']
 
-
-class TestUse:
-    def test_use_local_by_default(self) -> None:
-        mgr = MiseManager()
+    def test_fish_shell(self, mise_available: None) -> None:
+        mgr = MiseEnvManager()
         with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.use('python', '3.12')
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'use', '--local', 'python@3.12']
-
-    def test_use_global_scope(self) -> None:
-        mgr = MiseManager()
-        with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.use('python', '3.12', global_scope=True)
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'use', '--global', 'python@3.12']
-
-    def test_version_is_pinned_with_at_sign(self) -> None:
-        mgr = MiseManager()
-        with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.use('node', '20')
-        cmd = mock_run.call_args[0][0]
-        assert 'node@20' in cmd
+            mgr.activate('fish')
+        assert mock_run.call_args[0][0] == ['mise', 'activate', 'fish']
 
 
-class TestListTools:
-    def test_calls_mise_list(self) -> None:
-        mgr = MiseManager()
-        with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.list_tools()
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'list']
-
-
-class TestDoctor:
-    def test_calls_mise_doctor(self) -> None:
-        mgr = MiseManager()
-        with patch('athome.env_managers.mise.subprocess.run') as mock_run:
-            mgr.doctor()
-        cmd = mock_run.call_args[0][0]
-        assert cmd == ['mise', 'doctor']
-
-
-class TestToolNotFound:
-    def test_install_raises_when_mise_missing(self) -> None:
-        mgr = MiseManager()
+class TestMiseEnvNotFound:
+    def test_raises_when_mise_missing(self) -> None:
         with (
-            patch('athome.env_managers.mise.shutil.which', return_value=None),
+            patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError),
         ):
-            mgr.install('python')
+            MiseEnvManager()
 
-    def test_error_message_names_tool(self) -> None:
-        mgr = MiseManager()
+    def test_error_names_tool(self) -> None:
         with (
-            patch('athome.env_managers.mise.shutil.which', return_value=None),
+            patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            mgr.install('python')
+            MiseEnvManager()
         assert 'mise' in exc_info.value.format_message()
 
     def test_error_includes_install_hint(self) -> None:
-        mgr = MiseManager()
         with (
-            patch('athome.env_managers.mise.shutil.which', return_value=None),
+            patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            mgr.upgrade()
+            MiseEnvManager()
         assert 'mise.jdx.dev' in exc_info.value.format_message()

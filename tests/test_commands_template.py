@@ -6,15 +6,16 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from athome.commands.template import app
-from athome.config import AthomeConfig
+from athome.cli.templates import app
+from athome.definitions.config import AthomeConfig
+from athome.definitions.config import TemplateConfig
 
 runner = CliRunner()
 
 _CFG = AthomeConfig(
     templates={
-        'python': 'https://github.com/Dev-Oc-Collectif/python-template',
-        'zola': 'https://github.com/Dev-Oc-Collectif/zola-template',
+        'python': TemplateConfig(source='https://github.com/Dev-Oc-Collectif/python-template'),
+        'zola': TemplateConfig(source='https://github.com/Dev-Oc-Collectif/zola-template'),
     }
 )
 _EMPTY_CFG = AthomeConfig()

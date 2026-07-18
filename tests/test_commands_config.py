@@ -8,30 +8,43 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from athome.commands.config import app
+from athome.cli.config import app
 
 runner = CliRunner()
+
+# Input that says "no" to all interactive prompts (5 sections).
+_ALL_NO = 'n\nn\nn\nn\nn\n'
+
+# Input that configures one profile then skips the rest.
+_ONE_PROFILE = (
+    'y\n'  # configure profiles?
+    'personal\n'  # profile name
+    'https://github.com/user/dots\n'  # source
+    '\n'  # manager (default: chezmoi)
+    '\n'  # stop profile loop
+    'n\nn\nn\nn\nn'  # skip templates, workspace, tools, env
+)
 
 
 class TestConfigInit:
     def test_creates_config_file(self, tmp_path: Path) -> None:
         config_path = tmp_path / 'config.toml'
         with patch('athome.commands.config.CONFIG_PATH', config_path):
-            result = runner.invoke(app, ['init'])
+            result = runner.invoke(app, ['init'], input=_ALL_NO)
         assert result.exit_code == 0
         assert config_path.exists()
 
     def test_creates_parent_directories(self, tmp_path: Path) -> None:
         config_path = tmp_path / 'deep' / 'nested' / 'config.toml'
         with patch('athome.commands.config.CONFIG_PATH', config_path):
-            result = runner.invoke(app, ['init'])
+            result = runner.invoke(app, ['init'], input=_ALL_NO)
         assert result.exit_code == 0
         assert config_path.exists()
 
     def test_prints_path_on_success(self, tmp_path: Path) -> None:
         config_path = tmp_path / 'config.toml'
         with patch('athome.commands.config.CONFIG_PATH', config_path):
-            result = runner.invoke(app, ['init'])
+            result = runner.invoke(app, ['init'], input=_ALL_NO)
         assert str(config_path) in result.output
 
     def test_does_not_overwrite_existing_without_force(self, tmp_path: Path) -> None:
@@ -46,21 +59,40 @@ class TestConfigInit:
         config_path = tmp_path / 'config.toml'
         config_path.write_text('existing')
         with patch('athome.commands.config.CONFIG_PATH', config_path):
-            result = runner.invoke(app, ['init', '--force'])
+            result = runner.invoke(app, ['init', '--force'], input=_ALL_NO)
         assert result.exit_code == 0
         assert config_path.read_text() != 'existing'
 
-    def test_template_contains_profiles_section(self, tmp_path: Path) -> None:
+    def test_profile_section_written_when_confirmed(self, tmp_path: Path) -> None:
         config_path = tmp_path / 'config.toml'
         with patch('athome.commands.config.CONFIG_PATH', config_path):
-            runner.invoke(app, ['init'])
+            runner.invoke(app, ['init'], input=_ONE_PROFILE)
         assert '[profiles]' in config_path.read_text()
 
-    def test_template_contains_git_section(self, tmp_path: Path) -> None:
+    def test_profile_entry_written_with_name_and_source(self, tmp_path: Path) -> None:
         config_path = tmp_path / 'config.toml'
         with patch('athome.commands.config.CONFIG_PATH', config_path):
-            runner.invoke(app, ['init'])
-        assert '[git]' in config_path.read_text()
+            runner.invoke(app, ['init'], input=_ONE_PROFILE)
+        content = config_path.read_text()
+        assert 'personal' in content
+        assert 'https://github.com/user/dots' in content
+
+    def test_workspace_section_uses_correct_key(self, tmp_path: Path) -> None:
+        config_path = tmp_path / 'config.toml'
+        workspace_input = (
+            'n\nn\n'  # skip profiles, templates
+            'y\n'  # configure workspace?
+            '\n'  # destination (default ~/workspace)
+            'y\n'  # add owners?
+            'my-org\nhttps://github.com/my-org\n\n\n'  # one owner, stop
+            'n\n'  # no repos
+            'n\nn\n'  # skip tools, env
+        )
+        with patch('athome.commands.config.CONFIG_PATH', config_path):
+            runner.invoke(app, ['init'], input=workspace_input)
+        content = config_path.read_text()
+        assert '[workspace' in content
+        assert '[git' not in content
 
 
 class TestConfigShow:

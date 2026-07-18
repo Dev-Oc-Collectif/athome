@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from athome.commands.system import _REQUIRED_TOOLS
-from athome.commands.system import app
+from athome.cli.system import _REQUIRED_TOOLS
+from athome.cli.system import app
 
 runner = CliRunner()
 
@@ -77,7 +77,8 @@ class TestSystemUpgrade:
     def test_mise_present_calls_upgrade(self) -> None:
         with (
             patch('athome.commands.system.shutil.which', return_value='/usr/bin/mise'),
-            patch('athome.commands.system._mise.upgrade') as mock_upgrade,
+            patch('athome.tool_managers.mise.MiseToolManager.upgrade') as mock_upgrade,
+            patch('athome.interfaces.base.shutil.which', return_value='/usr/bin/mise'),
         ):
             result = runner.invoke(app, ['upgrade'])
         assert result.exit_code == 0
@@ -86,7 +87,8 @@ class TestSystemUpgrade:
     def test_mise_present_prints_message(self) -> None:
         with (
             patch('athome.commands.system.shutil.which', return_value='/usr/bin/mise'),
-            patch('athome.commands.system._mise.upgrade'),
+            patch('athome.tool_managers.mise.MiseToolManager.upgrade'),
+            patch('athome.interfaces.base.shutil.which', return_value='/usr/bin/mise'),
         ):
             result = runner.invoke(app, ['upgrade'])
         assert 'mise' in result.output.lower()

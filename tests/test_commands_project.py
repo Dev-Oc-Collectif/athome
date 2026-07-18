@@ -7,13 +7,16 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from athome.commands.project import app
-from athome.config import AthomeConfig
+from athome.cli.project import app
+from athome.definitions.config import AthomeConfig
+from athome.definitions.config import TemplateConfig
 
 runner = CliRunner()
 
 _CFG = AthomeConfig(
-    templates={'python': 'https://github.com/Dev-Oc-Collectif/python-template'},
+    templates={
+        'python': TemplateConfig(source='https://github.com/Dev-Oc-Collectif/python-template'),
+    },
 )
 _EMPTY_CFG = AthomeConfig()
 

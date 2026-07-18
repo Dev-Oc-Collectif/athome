@@ -44,10 +44,10 @@ work     = "https://github.com/your-org/dotfiles-work"
 python = "https://github.com/Dev-Oc-Collectif/python-template"
 zola   = "https://github.com/Dev-Oc-Collectif/zola-template"
 
-[git.owners.gh]
-org = "https://github.com/your-org"
+[workspace.owners]
+my-org = {source = "https://github.com/your-org", manager = "gh"}
 
-[git.repositories.gh]
+[workspace.repos]
 dotfiles = "https://github.com/your-user/dotfiles"
 TOML
 
@@ -57,6 +57,7 @@ echo "── help / structure ────────────────�
 assert_exit   "root --help"          0  athome --help
 assert_output "root lists profile"   "profile"    athome --help
 assert_output "root lists workspace" "workspace"  athome --help
+assert_output "root lists tools"     "tools"      athome --help
 assert_output "root lists create"    "create"     athome --help
 assert_output "root lists templates" "templates"  athome --help
 
@@ -65,6 +66,7 @@ assert_exit "workspace --help" 0  athome workspace  --help
 assert_exit "project --help"   0  athome project    --help
 assert_exit "repo --help"      0  athome repo       --help
 assert_exit "template --help"  0  athome template   --help
+assert_exit "tools --help"     0  athome tools      --help
 assert_exit "system --help"    0  athome system     --help
 
 echo ""

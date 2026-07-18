@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from athome.commands.repo import app
+from athome.cli.repo import app
 
 runner = CliRunner()
 

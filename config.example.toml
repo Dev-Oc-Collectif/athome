@@ -1,27 +1,36 @@
-# athome — example configuration
-# Place this file at: ~/.config/athome/config.toml
-
 [profiles]
-# Simple form: just a source URL.
-work     = "https://github.com/your-org/dotfiles-work"
-# Rich form: custom local destination for chezmoi source files.
-personal = {source = "https://github.com/your-user/dotfiles-personal", destination = "~/.dotfiles"}
+personal = "https://github.com/user/chezuser"  # Default `chezmoi`
+ec2 = { source = "https://github.com/user/ec2", manager = "chezmoi" }
+self-work = { source = "https://github.com/org/user-setup", manager = "dotter" }
+setup-remote = { source = "https://github.com/org/vm-setup", manager = "dotter", backup = "work-env", loads = ["base", "self-work"] }
+
+[profiles.backup]
+default-backup = "base"  # Name of the first backup made before any profile application.
+profile-backup = "{profile.name}"  # a configurable or fix name for each profile, before applying a new profile the current one is backuped is this format.
 
 [templates]
-python = "https://github.com/Dev-Oc-Collectif/python-template"
-zola   = "https://github.com/Dev-Oc-Collectif/zola-template"
+self-python-template = { source = "https://github.com/user/python-template", manager = "copier" }
+self-zola-template = "https://github.com/user/python-template"  # Default: `copier`
+work-python-template = {source = "https://github.com/org/uv-template", manager = "cookiecutter" }
 
-[git]
-workspace = "~/workspace"   # default clone destination for all providers
+[workspace]
+destination = "~/workspace"   # default clone destination for all providers
 
-[git.owners.gh]
-org      = "https://github.com/your-org"
-personal = "https://github.com/your-user"
+[workspace.owners]
+user = { source = "https://github.com/user", manager = "gh" }
+work = { source = "https://selfhosted.com/org", manager = "gitlab" }
 
-[git.repositories.gh]
-dotfiles = "https://github.com/your-user/dotfiles"
+[workspace.repos]  # extra repos management not fully managed from the org/users
+open-source = "https://github.com/open/source"  # Default: `gh`
+contract-superversion = { source = "https://github.com/open/source", manager = "gitlab" }
 
-# [managers]
-# Override or extend auto-discovered git managers.
-# gh     = "athome.git_managers.gh:GhManager"   # override built-in
-# gitlab = "athome_gitlab:GitLabManager"          # add third-party plugin
+[tools]
+perso-packages = { manager = "brew", manifest = "~/.config/athome/Brewfile" }
+work-packages = { manager = "mise", manifest = "~/.config/athome/work-mise.toml" }
+
+[env]
+work = { engine = "mise", shell = "zsh" }
+user = {engine = "direnv", shell = "zsh"}
+
+[env.variables]
+ATHOME_ENV = "production"
