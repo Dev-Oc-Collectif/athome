@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 from typing import Annotated
 
 import typer
@@ -11,14 +10,13 @@ import typer
 from athome.definitions.config import PROFILES_SOURCE_BASE
 from athome.definitions.config import ProfileConfig
 from athome.definitions.config import load_config
+from athome.definitions.managers.profile import ProfileManager
+from athome.definitions.registry import ManagersRegistry
 from athome.profiles.orchestrator import AthomeState
 from athome.profiles.orchestrator import compute_switch
 from athome.profiles.orchestrator import load_state
 from athome.profiles.orchestrator import resolve_stack
 from athome.profiles.orchestrator import save_state
-from athome.definitions.registry import ManagersRegistry
-
-from athome.definitions.managers.profile import ProfileManager
 
 app = typer.Typer(help='Manage dotfile profiles (default backend: chezmoi).')
 

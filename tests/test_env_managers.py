@@ -9,8 +9,8 @@ import pytest
 
 from athome.contexts.managers.direnv import DirenvManager
 from athome.contexts.managers.mise import MiseEnvManager
-from athome.exceptions import ToolNotFoundError
 from athome.definitions.managers.context import ContextManager
+from athome.exceptions import ToolNotFoundError
 
 _BASE_PATCH = 'athome.interfaces.base.shutil.which'
 

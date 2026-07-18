@@ -5,11 +5,11 @@ from __future__ import annotations
 import typer
 
 from athome.cli import config
+from athome.cli import contexts
+from athome.cli import profiles
 from athome.cli import project
 from athome.cli import repo
 from athome.cli import system
-from athome.cli import contexts
-from athome.cli import profiles
 from athome.cli import templates
 from athome.cli import tools
 from athome.cli import workspaces
@@ -35,9 +35,7 @@ app.command(name='create', help='Scaffold a project (alias: project create).')(p
 app.command(name='templates', help='List templates (alias: template list).')(
     templates.list_templates
 )
-app.command(name='setup', help='Create a starter config.toml (alias: config init).')(
-    config.init
-)
+app.command(name='setup', help='Create a starter config.toml (alias: config init).')(config.init)
 
 if __name__ == '__main__':  # pragma: no cover
     app()

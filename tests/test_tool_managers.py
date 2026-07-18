@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import pytest
 
-from athome.exceptions import ToolNotFoundError
 from athome.definitions.managers.tool import ToolManager
+from athome.exceptions import ToolNotFoundError
 from athome.tools.managers.brew import BrewToolManager
 from athome.tools.managers.mise import MiseToolManager
 

@@ -7,9 +7,9 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from athome.cli.main import app
 from athome.definitions.config import AthomeConfig
 from athome.definitions.config import TemplateConfig
-from athome.cli.main import app
 
 runner = CliRunner()
 

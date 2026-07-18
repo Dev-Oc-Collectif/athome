@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from functools import cache
-
 import tomllib
 from dataclasses import dataclass
 from dataclasses import field
+from functools import cache
 from pathlib import Path
 from typing import Any
 

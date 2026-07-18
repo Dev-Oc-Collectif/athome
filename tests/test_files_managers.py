@@ -11,9 +11,9 @@ import pytest
 from athome.definitions.config import ProfileConfig
 from athome.definitions.config import profile_config_path
 from athome.definitions.config import profile_source_path
+from athome.definitions.managers.profile import ProfileManager
 from athome.exceptions import ToolNotFoundError
 from athome.profiles.managers.chezmoi import ChezmoiManager
-from athome.definitions.managers.profile import ProfileManager
 
 _BASE_PATCH = 'athome.interfaces.base.shutil.which'
 

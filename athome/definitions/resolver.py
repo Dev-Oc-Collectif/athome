@@ -1,5 +1,3 @@
-from typing import TypeVar
-
 from athome.definitions.config import load_config
 from athome.definitions.managers import BaseManager
 from athome.definitions.registry import ManagersRegistry
@@ -14,8 +12,8 @@ class ManagerResolver[M: BaseManager]:
 
     def __init__(self, manager_cls: type[M]):
         # Extraction automatique des métadonnées de la classe
-        self.domain_label: str = getattr(manager_cls, 'DOMAIN_LABEL')
-        self.config_attr: str = getattr(manager_cls, 'CONFIG_ATTR')
+        self.domain_label: str = manager_cls.DOMAIN_LABEL
+        self.config_attr: str = manager_cls.CONFIG_ATTR
         self.registry = ManagersRegistry(manager_type=manager_cls)
 
     def resolve(self, name: str) -> M:

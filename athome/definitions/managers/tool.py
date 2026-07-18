@@ -17,9 +17,9 @@ class ToolManager(BaseManager, ABC):
     All mutations patch existing configuration files non-destructively.
     """
 
-    DOMAIN_LABEL = "Tool"
-    CONFIG_ATTR = "tools"
-    NAMESPACE = "athome.tool"
+    DOMAIN_LABEL = 'Tool'
+    CONFIG_ATTR = 'tools'
+    NAMESPACE = 'athome.tool'
 
     @abstractmethod
     def sync(self, manifest: Path) -> None:

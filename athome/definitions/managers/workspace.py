@@ -19,9 +19,9 @@ class WorkspaceManager(BaseManager, ABC):
     AthomeConfig.git before being passed to these methods.
     """
 
-    DOMAIN_LABEL = "Workspace"
-    CONFIG_ATTR = "worspaces"
-    NAMESPACE = "athome.workspace"
+    DOMAIN_LABEL = 'Workspace'
+    CONFIG_ATTR = 'worspaces'
+    NAMESPACE = 'athome.workspace'
 
     @abstractmethod
     def list_repos(self, owner: str | None = None) -> None:

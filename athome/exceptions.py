@@ -1,7 +1,8 @@
 """Custom exceptions for athome."""
 
 from __future__ import annotations
-from typing import Sequence
+
+from collections.abc import Sequence
 
 import click
 
@@ -58,11 +59,11 @@ class ManagerSourceCodeError(AthomeException):
     """Levée quand le manager sous-jacent est mal défini dans le code."""
 
     def __init__(self, param: str) -> None:
-        super().__init__(f"Missing Parameter {param}")
+        super().__init__(f'Missing Parameter {param}')
 
 
 class ManagerSourceCodeMissingError[T: AthomeException](ExceptionGroup):
     """Plop."""
 
     def __init__(self, missed: str, exceptions: Sequence[T]) -> None:
-        super().__init__(f"Missing {missed} in Manager(s)", exceptions)
+        super().__init__(f'Missing {missed} in Manager(s)', exceptions)

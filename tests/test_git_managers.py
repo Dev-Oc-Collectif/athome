@@ -9,9 +9,9 @@ from unittest.mock import patch
 
 import pytest
 
+from athome.definitions.managers.workspace import WorkspaceManager
 from athome.exceptions import ToolNotFoundError
 from athome.workspaces.managers.gh import GhManager
-from athome.definitions.managers.workspace import WorkspaceManager
 
 _BASE_PATCH = 'athome.interfaces.base.shutil.which'
 

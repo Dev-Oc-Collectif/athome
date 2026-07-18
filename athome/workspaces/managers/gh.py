@@ -60,9 +60,7 @@ class GhManager(WorkspaceManager):
             capture_output=True,
             text=True,
         )
-        repo_names = [
-            line.strip() for line in result.stdout.splitlines() if line.strip()
-        ]
+        repo_names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
         for name in repo_names:
             repo_path = destination / name
             if repo_path.exists():

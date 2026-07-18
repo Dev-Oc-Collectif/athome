@@ -9,8 +9,8 @@ import typer
 
 from athome.definitions.config import EnvEntryConfig
 from athome.definitions.config import load_config
-from athome.exceptions import ToolNotFoundError
 from athome.definitions.registry import ManagersRegistry
+from athome.exceptions import ToolNotFoundError
 
 if TYPE_CHECKING:
     from athome.definitions.managers.context import ContextManager

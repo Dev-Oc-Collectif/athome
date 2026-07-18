@@ -8,6 +8,14 @@ from functools import cache
 from athome.definitions.managers.base import BaseManager
 
 
+@cache
+def _load_managers[T: BaseManager](manager_cls: type[T]) -> dict[str, T]:
+    managers = {
+        ep.name: ep.load() for ep in importlib.metadata.entry_points(group=manager_cls.NAMESPACE)
+    }
+    return managers
+
+
 class ManagersRegistry[T: BaseManager]:
     """Load and cache manager implementations registered as entry points.
 
@@ -18,6 +26,9 @@ class ManagersRegistry[T: BaseManager]:
         )
         manager = registry.get('chezmoi')
     """
+
+    def __init__(self, manager_type: type[T]) -> None:
+        self.manager_type = manager_type
 
     @property
     def DOMAIN_LABEL(self) -> str:
@@ -30,9 +41,6 @@ class ManagersRegistry[T: BaseManager]:
     @property
     def CONFIG_ATTR(self) -> str:
         return self.manager_type.CONFIG_ATTR
-
-    def __init__(self, manager_type: type[T]) -> None:
-        self.manager_type = manager_type
 
     def _load(self) -> dict[str, T]:
         return _load_managers(self.manager_type)
@@ -52,12 +60,3 @@ class ManagersRegistry[T: BaseManager]:
     def all(self) -> dict[str, T]:
         """Return all registered managers, keyed by entry point name."""
         return self._load()
-
-
-@cache
-def _load_managers[T: BaseManager](manager_cls: type[T]) -> dict[str, T]:
-    managers = {
-            ep.name: ep.load()
-            for ep in importlib.metadata.entry_points(group=manager_cls.NAMESPACE)
-    }
-    return managers

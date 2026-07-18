@@ -24,9 +24,9 @@ class ProfileManager(BaseManager, ABC):
     the profile's source and destination settings.
     """
 
-    DOMAIN_LABEL = "Profile"
-    CONFIG_ATTR = "profles"
-    NAMESPACE = "athome.profile"
+    DOMAIN_LABEL = 'Profile'
+    CONFIG_ATTR = 'profles'
+    NAMESPACE = 'athome.profile'
 
     @abstractmethod
     def init(self, profile: ProfileConfig) -> None:

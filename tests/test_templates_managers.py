@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from athome.definitions.managers.template import TemplateEngine
-from athome.templates.managers.copier import CopierEngine
 from athome.templates.managers.cookiecutter import CookieCutterEngine
+from athome.templates.managers.copier import CopierEngine
 
 # ---------------------------------------------------------------------------
 # CopierEngine

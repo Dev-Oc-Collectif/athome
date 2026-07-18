@@ -17,9 +17,9 @@ class TemplateEngine(ABC):
     from AthomeConfig.templates) before being passed here.
     """
 
-    DOMAIN_LABEL = "Template"
-    CONFIG_ATTR = "templates"
-    NAMESPACE = "athome.template"
+    DOMAIN_LABEL = 'Template'
+    CONFIG_ATTR = 'templates'
+    NAMESPACE = 'athome.template'
 
     @abstractmethod
     def create(self, template_url: str, destination: Path) -> None:

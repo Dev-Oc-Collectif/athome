@@ -31,19 +31,19 @@ class BaseManager:
     CONFIG_ATTR: str
     NAMESPACE: str
 
+    def __init__(self) -> None:
+        self.fallback_require_tool()
+
     def __init_subclass__(cls) -> None:
         """Check Subclass Integrity."""
         checks = [
             ManagerSourceCodeError(param)
-            for param in ("DOMAIN_LABEL", "CONFIG_ATTR", "NAMESPACE")
+            for param in ('DOMAIN_LABEL', 'CONFIG_ATTR', 'NAMESPACE')
             if (getattr(cls, param, None)) is None
         ]
 
         if checks:
-            raise ManagerSourceCodeMissingError("attribute(s)", checks)
-
-    def __init__(self) -> None:
-        self.fallback_require_tool()
+            raise ManagerSourceCodeMissingError('attribute(s)', checks)
 
     def fallback_require_tool(self) -> None:
         """Raise ToolNotFoundError for the first missing tool in REQUIRES."""

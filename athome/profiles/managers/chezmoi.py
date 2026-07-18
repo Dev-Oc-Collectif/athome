@@ -5,13 +5,13 @@ from __future__ import annotations
 import subprocess  # nosec
 from pathlib import Path
 
-from athome.profiles.backup import backup_files
 from athome.definitions.config import ProfileConfig
 from athome.definitions.config import profile_config_path
 from athome.definitions.config import profile_source_path
 from athome.definitions.config import profile_state_path
 from athome.definitions.managers.base import RequireInstalled
 from athome.definitions.managers.profile import ProfileManager
+from athome.profiles.backup import backup_files
 
 _INSTALL_HINT = 'https://chezmoi.io/'
 

@@ -14,9 +14,9 @@ class ContextManager(BaseManager, ABC):
     Default implementations: mise (env vars), direnv (context loader).
     """
 
-    DOMAIN_LABEL = "Context"
-    CONFIG_ATTR = "contexts"
-    NAMESPACE = "athome.context"
+    DOMAIN_LABEL = 'Context'
+    CONFIG_ATTR = 'contexts'
+    NAMESPACE = 'athome.context'
 
     @abstractmethod
     def load(self) -> None:
