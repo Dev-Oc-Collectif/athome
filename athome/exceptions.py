@@ -20,3 +20,15 @@ class ToolNotFoundError(click.ClickException):
         if install_hint:
             message += f' Install it from: {install_hint}'
         super().__init__(message)
+
+
+class ConfigEntryExistsError(click.ClickException):
+    """Raised when an `add` command targets a name that already exists in config.toml."""
+
+    def __init__(self, name: str, section: str) -> None:
+        self.name = name
+        self.section = section
+        super().__init__(
+            f"'{name}' already exists in [{section}] — choose a different name "
+            'or edit config.toml directly.'
+        )

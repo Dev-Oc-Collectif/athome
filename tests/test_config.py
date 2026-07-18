@@ -1,4 +1,4 @@
-"""Tests for athome.config — configuration parser and path helpers."""
+"""Tests for athome.definitions.config — configuration parser and path helpers."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from athome.config import AthomeConfig
-from athome.config import GitConfig
-from athome.config import ProfileConfig
-from athome.config import load_config
-from athome.config import profile_config_path
-from athome.config import profile_source_path
-from athome.config import profile_state_path
+from athome.definitions.config import AthomeConfig
+from athome.definitions.config import ProfileConfig
+from athome.definitions.config import WorkspaceConfig
+from athome.definitions.config import load_config
+from athome.definitions.config import profile_config_path
+from athome.definitions.config import profile_source_path
+from athome.definitions.config import profile_state_path
 
 
 class TestLoadConfigMissingFile:
@@ -28,10 +28,10 @@ class TestLoadConfigMissingFile:
         result = load_config(tmp_path / 'nonexistent.toml')
         assert result.templates == {}
 
-    def test_empty_config_has_empty_git(self, tmp_path: Path) -> None:
+    def test_empty_config_has_empty_workspace(self, tmp_path: Path) -> None:
         result = load_config(tmp_path / 'nonexistent.toml')
-        assert result.git.owners == {}
-        assert result.git.repositories == {}
+        assert result.workspace.owners == {}
+        assert result.workspace.repos == {}
 
 
 class TestLoadConfigEmptyToml:
@@ -67,62 +67,112 @@ class TestLoadConfigProfiles:
         assert result.profiles['dev'].source == 'https://github.com/user/dotfiles-dev'
         assert result.templates == {}
 
+    def test_profile_loads_field(self, tmp_path: Path) -> None:
+        p = tmp_path / 'config.toml'
+        p.write_text(
+            '[profiles]\n'
+            'base = "https://github.com/user/base"\n'
+            'work = {source = "https://github.com/org/dots", loads = ["base"]}\n'
+        )
+        result = load_config(p)
+        assert result.profiles['work'].loads == ['base']
+
 
 class TestLoadConfigTemplates:
     def test_parses_template_names(self, config_file: Path) -> None:
         result = load_config(config_file)
         assert set(result.templates) == {'python', 'zola'}
 
-    def test_template_url_values(self, config_file: Path) -> None:
+    def test_template_source_value(self, config_file: Path) -> None:
         result = load_config(config_file)
-        assert result.templates['python'] == 'https://github.com/Dev-Oc-Collectif/python-template'
+        assert (
+            result.templates['python'].source
+            == 'https://github.com/Dev-Oc-Collectif/python-template'
+        )
+
+    def test_template_default_manager(self, config_file: Path) -> None:
+        result = load_config(config_file)
+        assert result.templates['python'].manager == 'copier'
+
+    def test_template_explicit_manager(self, tmp_path: Path) -> None:
+        p = tmp_path / 'config.toml'
+        p.write_text(
+            '[templates]\nrust = '
+            '{source = "https://github.com/org/rust-template", manager = "cruft"}\n'
+        )
+        result = load_config(p)
+        assert result.templates['rust'].manager == 'cruft'
 
     def test_templates_section_only(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
         p.write_bytes(b'[templates]\nrust = "https://github.com/org/rust-template"\n')
         result = load_config(p)
-        assert result.templates['rust'] == 'https://github.com/org/rust-template'
+        assert result.templates['rust'].source == 'https://github.com/org/rust-template'
         assert result.profiles == {}
 
 
-class TestLoadConfigGit:
-    def test_parses_owners_providers(self, config_file: Path) -> None:
+class TestLoadConfigWorkspace:
+    def test_parses_owner_names(self, config_file: Path) -> None:
         result = load_config(config_file)
-        assert 'gh' in result.git.owners
+        assert 'my-org' in result.workspace.owners
 
-    def test_parses_owner_entries(self, config_file: Path) -> None:
+    def test_parses_owner_source(self, config_file: Path) -> None:
         result = load_config(config_file)
-        assert result.git.owners['gh']['org'] == 'https://github.com/my-org'
+        assert result.workspace.owners['my-org'].source == 'https://github.com/my-org'
 
-    def test_parses_repository_entries(self, config_file: Path) -> None:
+    def test_parses_repo_entries(self, config_file: Path) -> None:
         result = load_config(config_file)
-        assert result.git.repositories['gh']['dotfiles'] == 'https://github.com/user/dotfiles'
+        assert result.workspace.repos['dotfiles'].source == 'https://github.com/user/dotfiles'
 
-    def test_git_section_only(self, tmp_path: Path) -> None:
+    def test_owner_bare_url(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
-        p.write_bytes(b'[git.owners.github]\nmyorg = "https://github.com/myorg"\n')
+        p.write_bytes(b'[workspace.owners]\nmyorg = "https://github.com/myorg"\n')
         result = load_config(p)
-        assert result.git.owners['github']['myorg'] == 'https://github.com/myorg'
+        assert result.workspace.owners['myorg'].source == 'https://github.com/myorg'
         assert result.profiles == {}
 
-    def test_missing_git_section_yields_empty_git(self, tmp_path: Path) -> None:
+    def test_missing_workspace_section_yields_empty_workspace(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
         p.write_bytes(b'[profiles]\nwork = "https://github.com/org/dotfiles"\n')
         result = load_config(p)
-        assert result.git.owners == {}
-        assert result.git.repositories == {}
+        assert result.workspace.owners == {}
+        assert result.workspace.repos == {}
 
-    def test_parses_workspace_from_git_section(self, tmp_path: Path) -> None:
+    def test_parses_destination_from_workspace_section(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
-        p.write_bytes(b'[git]\nworkspace = "/custom/workspace"\n')
+        p.write_bytes(b'[workspace]\ndestination = "/custom/workspace"\n')
         result = load_config(p)
-        assert result.git.workspace == Path('/custom/workspace')
+        assert result.workspace.destination.target == Path('/custom/workspace')
 
-    def test_workspace_default_when_absent(self, tmp_path: Path) -> None:
+    def test_destination_default_when_absent(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
-        p.write_bytes(b'[git.owners.gh]\norg = "https://github.com/org"\n')
+        p.write_bytes(b'[workspace.owners]\nmyorg = "https://github.com/myorg"\n')
         result = load_config(p)
-        assert result.git.workspace == Path.home() / 'workspace'
+        assert result.workspace.destination.target == Path.home() / 'workspace'
+
+
+class TestLoadConfigBrew:
+    def test_parses_brew_entries(self, tmp_path: Path) -> None:
+        manifest = tmp_path / 'Brewfile'
+        manifest.touch()
+        p = tmp_path / 'config.toml'
+        p.write_text(f'[brew]\nwork-packages = {{manifest = "{manifest}"}}\n')
+        result = load_config(p)
+        assert 'work-packages' in result.brew
+        assert result.brew['work-packages'].manifest == manifest
+
+    def test_bare_string_entry(self, tmp_path: Path) -> None:
+        manifest = tmp_path / 'Brewfile'
+        p = tmp_path / 'config.toml'
+        p.write_text(f'[brew]\nwork-packages = "{manifest}"\n')
+        result = load_config(p)
+        assert result.brew['work-packages'].manifest == manifest
+
+    def test_missing_brew_section_returns_empty(self, tmp_path: Path) -> None:
+        p = tmp_path / 'config.toml'
+        p.write_bytes(b'[profiles]\nwork = "url"\n')
+        result = load_config(p)
+        assert result.brew == {}
 
 
 class TestLoadConfigRichProfileFormat:
@@ -172,18 +222,21 @@ class TestDataclasses:
         with pytest.raises(AttributeError):
             p.name = 'y'  # type: ignore[misc] # ty: ignore[invalid-assignment]
 
-    def test_git_config_defaults(self) -> None:
-        g = GitConfig()
+    def test_profile_config_default_loads(self) -> None:
+        p = ProfileConfig(name='x', source='url')
+        assert p.loads == []
+
+    def test_workspace_config_defaults(self) -> None:
+        g = WorkspaceConfig()
         assert g.owners == {}
-        assert g.repositories == {}
-        assert g.workspace == Path.home() / 'workspace'
+        assert g.repos == {}
+        assert g.destination.target == Path.home() / 'workspace'
 
     def test_athome_config_defaults(self) -> None:
         c = AthomeConfig()
         assert c.profiles == {}
         assert c.templates == {}
-        assert isinstance(c.git, GitConfig)
-        assert c.managers == {}
+        assert isinstance(c.workspace, WorkspaceConfig)
 
 
 _P = ProfileConfig(name='myprofile', source='url')

@@ -1,7 +1,7 @@
 repository:
-  name: cookiecutter-python
-  description: Cookiecutter Python template.
-  homepage: https://github.com/cdubos-fr/cookiecutter-python
+  name: athome
+  description: Agnostic developer environment orchestrator by Dev'Oc Collectif.
+  homepage: https://github.com/Dev-Oc-Collectif/athome
   topics: github, probot
   private: false
   has_issues: true

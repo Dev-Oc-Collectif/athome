@@ -26,9 +26,11 @@ Creates `.venv/` with all runtime and dev dependencies.
 bash .claude/skills/run-athome/smoke.sh
 ```
 
-Runs 19 assertions across help output, graceful empty-config messages,
+Runs 23 assertions across help output, graceful empty-config messages,
 fixture-config output, error exit codes, and `system doctor`.
 Exits 0 on full pass, 1 on any failure — suitable as a CI step.
+Every assertion runs through the **installed console script** (`.venv/bin/athome`),
+not `python -m ...` — this is what actually catches a broken entry point.
 
 **What the smoke script covers:**
 
@@ -46,9 +48,9 @@ and injected via `HOME=$FAKEHOME`. Cleaned up on exit.
 **Invoking the CLI directly** (outside the smoke script):
 
 ```bash
-.venv/bin/python -m athome.main --help
-.venv/bin/python -m athome.main system doctor
-HOME=/tmp/fake .venv/bin/python -m athome.main profile list   # no config → graceful empty
+.venv/bin/athome --help
+.venv/bin/athome system doctor
+HOME=/tmp/fake .venv/bin/athome profile list   # no config → graceful empty
 ```
 
 Once installed via `uv tool install .` (or `pip install -e .`):
@@ -72,7 +74,7 @@ uv run pytest -q
 ## Gotchas
 
 - **`$PYTHON` word-split trap.** Never assign a multi-word command to a variable and
-  use it in `"$@"`. Use a shell function: `athome() { .venv/bin/python -m athome.main "$@"; }`.
+  use it in `"$@"`. Use a shell function: `athome() { .venv/bin/athome "$@"; }`.
 - **`((N++))` under `set -e`.** When `N=0`, `((0))` returns exit 1, aborting the script.
   Use `N=$((N + 1))` instead.
 - **Config path is `$HOME`-relative.** `load_config()` resolves to

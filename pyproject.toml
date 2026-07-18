@@ -15,27 +15,22 @@ dependencies = [
     "click",
     "typer",
     "copier",
-    "rich"
+    "cruft",
+    "rich",
+    "tomlkit",
 ]
 
 [project.scripts]
-athome = "athome.main:app"
-
-[project.entry-points."athome.git_managers"]
-gh = "athome.git_managers.gh:GhManager"
+athome = "athome.cli.main:app"
 
 [dependency-groups]
 dev = [
-    { include-group = "ai" },
     { include-group = "dx" },
     { include-group = "docs" },
     { include-group = "lint" },
     { include-group = "typing" },
     { include-group = "tests" },
     { include-group = "security" },
-]
-ai = [
-    "library-skills",
 ]
 docs = [
     "zensical>=0.0.43",
@@ -49,6 +44,7 @@ dx = [
 ]
 lint = [
     "ruff>=0.15.13",
+    "rust-just>=1.51.0",
     "ssort>=0.16.0",
     "zizmor >=1.25.2",
 ]
@@ -68,11 +64,13 @@ tests = [
 [tool.flit.module]
 name = "athome"
 
-[tool.coverage.run]
-source_pkgs = ["athome"]
-
-[tool.coverage.report]
-show_missing = true
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=athome",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+    "--disable-pytest-warnings",
+]
 
 [tool.mypy]
 python_version = "3.14"
@@ -143,6 +141,7 @@ lint.select = [
     "TRY",
 ]
 lint.ignore = [
+    "ANN204",
     "D107",
     "D203",
     "D212",
@@ -165,6 +164,7 @@ format.preview = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"
+tag_format = "v$version"
 version = "0.0.1"
 version_files = [
     "pyproject.toml:version",

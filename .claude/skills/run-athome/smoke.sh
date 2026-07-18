@@ -7,7 +7,7 @@ set -uo pipefail
 
 PASS=0; FAIL=0
 
-athome() { .venv/bin/python -m athome.main "$@"; }
+athome() { .venv/bin/athome "$@"; }
 
 # ── helpers ────────────────────────────────────────────────────────────────
 ok()   { echo "  ✓  $1"; PASS=$((PASS + 1)); }
@@ -44,10 +44,10 @@ work     = "https://github.com/your-org/dotfiles-work"
 python = "https://github.com/Dev-Oc-Collectif/python-template"
 zola   = "https://github.com/Dev-Oc-Collectif/zola-template"
 
-[git.owners.gh]
-org = "https://github.com/your-org"
+[workspace.owners]
+my-org = {source = "https://github.com/your-org"}
 
-[git.repositories.gh]
+[workspace.repos]
 dotfiles = "https://github.com/your-user/dotfiles"
 TOML
 
@@ -56,42 +56,46 @@ echo "── help / structure ────────────────�
 
 assert_exit   "root --help"          0  athome --help
 assert_output "root lists profile"   "profile"    athome --help
-assert_output "root lists workspace" "workspace"  athome --help
+assert_output "root lists repo"      "repo"       athome --help
+assert_output "root lists brew"      "brew"       athome --help
 assert_output "root lists create"    "create"     athome --help
 assert_output "root lists templates" "templates"  athome --help
+assert_output "root lists cleanup"   "cleanup"    athome --help
 
-assert_exit "profile --help"   0  athome profile   --help
-assert_exit "workspace --help" 0  athome workspace  --help
-assert_exit "project --help"   0  athome project    --help
-assert_exit "repo --help"      0  athome repo       --help
-assert_exit "template --help"  0  athome template   --help
-assert_exit "system --help"    0  athome system     --help
+assert_exit "profile --help"  0  athome profile  --help
+assert_exit "project --help"  0  athome project  --help
+assert_exit "repo --help"     0  athome repo     --help
+assert_exit "template --help" 0  athome template --help
+assert_exit "brew --help"     0  athome brew     --help
+assert_exit "mise --help"     0  athome mise     --help
+assert_exit "system --help"   0  athome system   --help
+assert_exit "cleanup --help"  0  athome cleanup  --help
 
 echo ""
 echo "── no-config graceful messages ────────────────────────────────────────"
 
 assert_output "profile list (empty)" "No profiles defined" \
-    env HOME="$NOHOME" .venv/bin/python -m athome.main profile list
+    env HOME="$NOHOME" .venv/bin/athome profile list
 assert_output "template list (empty)" "No templates configured" \
-    env HOME="$NOHOME" .venv/bin/python -m athome.main template list
+    env HOME="$NOHOME" .venv/bin/athome template list
 
 echo ""
 echo "── with fixture config.toml ───────────────────────────────────────────"
 
 assert_output "profile list shows personal" "personal" \
-    env HOME="$FAKEHOME" .venv/bin/python -m athome.main profile list
+    env HOME="$FAKEHOME" .venv/bin/athome profile list
 assert_output "profile list shows work" "work" \
-    env HOME="$FAKEHOME" .venv/bin/python -m athome.main profile list
+    env HOME="$FAKEHOME" .venv/bin/athome profile list
 assert_output "template list shows python" "python" \
-    env HOME="$FAKEHOME" .venv/bin/python -m athome.main template list
+    env HOME="$FAKEHOME" .venv/bin/athome template list
 assert_output "template list shows zola" "zola" \
-    env HOME="$FAKEHOME" .venv/bin/python -m athome.main template list
+    env HOME="$FAKEHOME" .venv/bin/athome template list
 
 echo ""
 echo "── unknown profile aborts with exit 1 ────────────────────────────────"
 
 assert_exit "profile sync (unknown name)" 1 \
-    env HOME="$NOHOME" .venv/bin/python -m athome.main profile sync nonexistent
+    env HOME="$NOHOME" .venv/bin/athome profile sync nonexistent
 
 echo ""
 echo "── system doctor ──────────────────────────────────────────────────────"

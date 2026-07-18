@@ -1,13 +1,9 @@
 # athome
 
-CLI pour la gestion de templates et de projets Python (copier, chezmoi, etc).
+Agnostic developer environment orchestrator by Dev'Oc Collectif.
 
 ## Installation
 
 ```sh
 pip install .
 ```
-
-## Développement
-
-- Basé sur [typer](https://typer.tiangolo.com/)

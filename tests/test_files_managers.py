@@ -1,4 +1,4 @@
-"""Tests for ChezmoidManager — SharedFileManager backed by chezmoi."""
+"""Tests for ChezmoiManager — SharedFileManager backed by chezmoi."""
 
 from __future__ import annotations
 
@@ -8,18 +8,19 @@ from unittest.mock import patch
 
 import pytest
 
-from athome.config import ProfileConfig
-from athome.config import profile_config_path
-from athome.config import profile_source_path
-from athome.config import profile_state_path
+from athome.definitions.config import ProfileConfig
+from athome.definitions.config import profile_config_path
+from athome.definitions.config import profile_source_path
+from athome.definitions.managers.base import BaseManager
 from athome.exceptions import ToolNotFoundError
-from athome.files_managers.chezmoi import ChezmoidManager
-from athome.interfaces.shared_file_manager import SharedFileManager
+from athome.profiles.managers.chezmoi import ChezmoiManager
+
+_BASE_PATCH = 'athome.definitions.managers.base.shutil.which'
 
 
 @pytest.fixture(autouse=True)
 def chezmoi_available() -> Generator[None]:
-    with patch('athome.files_managers.chezmoi.shutil.which', return_value='/usr/bin/chezmoi'):
+    with patch(_BASE_PATCH, return_value='/usr/bin/chezmoi'):
         yield
 
 
@@ -27,89 +28,151 @@ PROFILE = ProfileConfig(name='work', source='https://github.com/org/dotfiles-wor
 PROFILE_B = ProfileConfig(name='personal', source='https://github.com/user/dotfiles')
 
 
-def expected_flags(profile: ProfileConfig) -> list[str]:
-    return [
-        f'--source={profile_source_path(profile)}',
-        f'--config={profile_config_path(profile.name)}',
-        f'--state={profile_state_path(profile.name)}',
-    ]
-
-
-class TestChezmoidManagerContract:
+class TestChezmoiManagerContract:
     def test_is_shared_file_manager(self) -> None:
-        assert issubclass(ChezmoidManager, SharedFileManager)
+        assert issubclass(ChezmoiManager, BaseManager)
 
     def test_instantiates(self) -> None:
-        assert isinstance(ChezmoidManager(), ChezmoidManager)
+        assert isinstance(ChezmoiManager(), ChezmoiManager)
 
 
 class TestProfileFlags:
     def test_flags_contain_source(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         flags = mgr._profile_flags(PROFILE)
         assert any('--source=' in f for f in flags)
 
     def test_flags_contain_config(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         flags = mgr._profile_flags(PROFILE)
         assert any('--config=' in f for f in flags)
 
     def test_flags_contain_state(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         flags = mgr._profile_flags(PROFILE)
-        assert any('--state=' in f for f in flags)
+        assert any('--persistent-state=' in f for f in flags)
 
     def test_flags_embed_profile_name_in_paths(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         flags = mgr._profile_flags(PROFILE)
         assert all(PROFILE.name in f for f in flags)
 
     def test_different_profiles_yield_different_flags(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         assert mgr._profile_flags(PROFILE) != mgr._profile_flags(PROFILE_B)
 
     def test_custom_destination_used_in_source_flag(self) -> None:
         custom = Path('/custom/dots')
         profile = ProfileConfig(name='dev', source='url', destination=custom)
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         flags = mgr._profile_flags(profile)
         assert f'--source={custom}' in flags
 
 
+class TestIsInitialized:
+    def test_returns_true_when_source_dir_exists(self, tmp_path: Path) -> None:
+        source = tmp_path / 'work'
+        source.mkdir()
+        profile = ProfileConfig(name='work', source='url', destination=source)
+        assert ChezmoiManager().is_initialized(profile) is True
+
+    def test_returns_false_when_source_dir_missing(self, tmp_path: Path) -> None:
+        source = tmp_path / 'work'
+        profile = ProfileConfig(name='work', source='url', destination=source)
+        assert ChezmoiManager().is_initialized(profile) is False
+
+
+class TestInit:
+    def test_calls_chezmoi_init_with_source_url(self) -> None:
+        mgr = ChezmoiManager()
+        with (
+            patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run,
+            patch('athome.profiles.managers.chezmoi.Path.mkdir'),
+        ):
+            mgr.init(PROFILE)
+        cmd = mock_run.call_args[0][0]
+        assert 'init' in cmd
+        assert PROFILE.source in cmd
+
+    def test_passes_no_apply_flag(self) -> None:
+        mgr = ChezmoiManager()
+        with (
+            patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run,
+            patch('athome.profiles.managers.chezmoi.Path.mkdir'),
+        ):
+            mgr.init(PROFILE)
+        cmd = mock_run.call_args[0][0]
+        assert '--apply=false' in cmd
+
+    def test_passes_profile_flags(self) -> None:
+        mgr = ChezmoiManager()
+        with (
+            patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run,
+            patch('athome.profiles.managers.chezmoi.Path.mkdir'),
+        ):
+            mgr.init(PROFILE)
+        cmd = mock_run.call_args[0][0]
+        assert f'--source={profile_source_path(PROFILE)}' in cmd
+
+    def test_creates_config_parent_dir(self, tmp_path: Path) -> None:
+        config_dir = tmp_path / 'profiles'
+        profile = ProfileConfig(name='test', source='url', destination=tmp_path / 'src')
+        with (
+            patch('athome.profiles.managers.chezmoi.subprocess.run'),
+            patch(
+                'athome.profiles.managers.chezmoi.profile_config_path',
+                return_value=config_dir / 'test.toml',
+            ),
+            patch(
+                'athome.profiles.managers.chezmoi.profile_source_path',
+                return_value=tmp_path / 'src',
+            ),
+        ):
+            ChezmoiManager().init(profile)
+        assert config_dir.exists()
+
+    def test_raises_when_chezmoi_missing(self) -> None:
+        with (
+            patch(_BASE_PATCH, return_value=None),
+            pytest.raises(ToolNotFoundError),
+        ):
+            ChezmoiManager()
+
+
 class TestSync:
     def test_calls_chezmoi_update(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.sync(PROFILE)
         cmd = mock_run.call_args[0][0]
         assert cmd[0] == 'chezmoi'
         assert 'update' in cmd
 
     def test_passes_profile_flags(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.sync(PROFILE)
         cmd = mock_run.call_args[0][0]
         assert f'--source={profile_source_path(PROFILE)}' in cmd
 
     def test_check_is_true(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.sync(PROFILE)
         assert mock_run.call_args[1].get('check') is True
 
 
 class TestApply:
     def test_calls_chezmoi_apply(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.apply(PROFILE)
         cmd = mock_run.call_args[0][0]
         assert 'apply' in cmd
 
     def test_passes_profile_flags(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.apply(PROFILE)
         cmd = mock_run.call_args[0][0]
         assert f'--config={profile_config_path(PROFILE.name)}' in cmd
@@ -117,18 +180,18 @@ class TestApply:
 
 class TestAdd:
     def test_calls_chezmoi_add_with_path(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         target = Path('/home/user/.zshrc')
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.add(PROFILE, target)
         cmd = mock_run.call_args[0][0]
         assert 'add' in cmd
         assert str(target) in cmd
 
     def test_path_is_stringified(self) -> None:
-        mgr = ChezmoidManager()
+        mgr = ChezmoiManager()
         target = Path('/some/file')
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.add(PROFILE, target)
         cmd = mock_run.call_args[0][0]
         assert '/some/file' in cmd
@@ -136,8 +199,8 @@ class TestAdd:
 
 class TestDiff:
     def test_calls_chezmoi_diff(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.diff(PROFILE)
         cmd = mock_run.call_args[0][0]
         assert 'diff' in cmd
@@ -145,36 +208,33 @@ class TestDiff:
 
 class TestStatus:
     def test_calls_chezmoi_status(self) -> None:
-        mgr = ChezmoidManager()
-        with patch('athome.files_managers.chezmoi.subprocess.run') as mock_run:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
             mgr.status(PROFILE)
         cmd = mock_run.call_args[0][0]
         assert 'status' in cmd
 
 
 class TestToolNotFound:
-    def test_sync_raises_when_chezmoi_missing(self) -> None:
-        mgr = ChezmoidManager()
+    def test_raises_at_instantiation_when_chezmoi_missing(self) -> None:
         with (
-            patch('athome.files_managers.chezmoi.shutil.which', return_value=None),
+            patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError),
         ):
-            mgr.sync(PROFILE)
+            ChezmoiManager()
 
     def test_error_message_names_tool(self) -> None:
-        mgr = ChezmoidManager()
         with (
-            patch('athome.files_managers.chezmoi.shutil.which', return_value=None),
+            patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            mgr.sync(PROFILE)
+            ChezmoiManager()
         assert 'chezmoi' in exc_info.value.format_message()
 
     def test_error_includes_install_hint(self) -> None:
-        mgr = ChezmoidManager()
         with (
-            patch('athome.files_managers.chezmoi.shutil.which', return_value=None),
+            patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            mgr.apply(PROFILE)
+            ChezmoiManager()
         assert 'chezmoi.io' in exc_info.value.format_message()
