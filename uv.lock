@@ -95,6 +95,7 @@ dependencies = [
     { name = "copier" },
     { name = "cruft" },
     { name = "rich" },
+    { name = "tomlkit" },
     { name = "typer" },
 ]
 
@@ -151,6 +152,7 @@ requires-dist = [
     { name = "copier" },
     { name = "cruft" },
     { name = "rich" },
+    { name = "tomlkit" },
     { name = "typer" },
 ]
 

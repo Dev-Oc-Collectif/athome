@@ -17,28 +17,11 @@ dependencies = [
     "copier",
     "cruft",
     "rich",
+    "tomlkit",
 ]
 
 [project.scripts]
-athome = "athome.main:app"
-
-[project.entry-points."athome.git_managers"]
-gh = "athome.git_managers.gh:GhManager"
-
-[project.entry-points."athome.shared_file_managers"]
-chezmoi = "athome.files_managers.chezmoi:ChezmoiManager"
-
-[project.entry-points."athome.tool_managers"]
-mise = "athome.tool_managers.mise:MiseToolManager"
-brew = "athome.tool_managers.brew:BrewToolManager"
-
-[project.entry-points."athome.env_managers"]
-direnv = "athome.env_managers.direnv:DirenvManager"
-mise = "athome.env_managers.mise:MiseEnvManager"
-
-[project.entry-points."athome.template_engines"]
-copier = "athome.templates_managers.copier:CopierEngine"
-cruft = "athome.templates_managers.cruft:CookieCutterEngine"
+athome = "athome.cli.main:app"
 
 [dependency-groups]
 dev = [

@@ -27,8 +27,8 @@ def full_config() -> AthomeConfig:
             'zola': TemplateConfig(source='https://github.com/Dev-Oc-Collectif/zola-template'),
         },
         workspace=WorkspaceConfig(
-            owners={'my-org': OwnerConfig(source='https://github.com/my-org', manager='gh')},
-            repos={'dotfiles': RepoConfig(source='https://github.com/user/dotfiles', manager='gh')},
+            owners={'my-org': OwnerConfig(source='https://github.com/my-org')},
+            repos={'dotfiles': RepoConfig(source='https://github.com/user/dotfiles')},
         ),
     )
 
@@ -53,7 +53,7 @@ def config_file(tmp_path: Path) -> Path:
         b'zola   = "https://github.com/Dev-Oc-Collectif/zola-template"\n'
         b'\n'
         b'[workspace.owners]\n'
-        b'my-org = {source = "https://github.com/my-org", manager = "gh"}\n'
+        b'my-org = {source = "https://github.com/my-org"}\n'
         b'\n'
         b'[workspace.repos]\n'
         b'dotfiles = "https://github.com/user/dotfiles"\n'

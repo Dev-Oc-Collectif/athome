@@ -8,11 +8,12 @@ from typing import Annotated
 import typer
 
 from athome.definitions.config import load_config
-from athome.templates.managers import CopierEngine
+from athome.templates.managers.cookiecutter import CookieCutterEngine
+from athome.templates.managers.copier import CopierEngine
 
-app = typer.Typer(help='Bootstrap and update projects from templates.')
+app = typer.Typer(help='Bootstrap and update projects from templates (copier or cruft).')
 
-_engine = CopierEngine()
+_ENGINES = {'copier': CopierEngine(), 'cruft': CookieCutterEngine()}
 
 
 @app.command()
@@ -26,14 +27,26 @@ def create(
     cfg = load_config()
     tmpl = cfg.templates.get(template)
     url = tmpl.source if tmpl is not None else template
-    typer.echo(f'Creating project from {url} → {destination}')
-    _engine.create(url, destination)
+    manager = tmpl.manager if tmpl is not None else 'copier'
+    engine = _ENGINES.get(manager)
+    if engine is None:
+        typer.echo(f'Unknown template engine "{manager}". Supported: {", ".join(_ENGINES)}')
+        raise typer.Exit(1)
+    typer.echo(f'Creating project from {url} → {destination} (via {manager})')
+    engine.create(url, destination)
 
 
 @app.command()
 def update(
     destination: Annotated[Path, typer.Argument(help='Existing project directory')] = Path('.'),
+    manager: Annotated[
+        str, typer.Option('--manager', '-m', help='Template engine that created this project.')
+    ] = 'copier',
 ) -> None:
-    """Update an existing copier project to the latest template version."""
-    typer.echo(f'Updating project in {destination}')
-    _engine.update(destination)
+    """Update an existing project to the latest template version."""
+    engine = _ENGINES.get(manager)
+    if engine is None:
+        typer.echo(f'Unknown template engine "{manager}". Supported: {", ".join(_ENGINES)}')
+        raise typer.Exit(1)
+    typer.echo(f'Updating project in {destination} (via {manager})')
+    engine.update(destination)

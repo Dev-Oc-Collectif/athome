@@ -1,12 +1,18 @@
-"""Template commands — inspect available project templates from config."""
+"""Template commands — inspect and register available project templates."""
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import typer
 
+from athome.definitions import config_writer
+from athome.definitions.config import CONFIG_PATH
 from athome.definitions.config import load_config
 
-app = typer.Typer(help='Inspect available project templates.')
+app = typer.Typer(help='Inspect and register available project templates.')
+
+_KNOWN_MANAGERS = frozenset({'copier', 'cruft'})
 
 
 @app.command('list')
@@ -20,3 +26,22 @@ def list_templates() -> None:
         return
     for name, tmpl in cfg.templates.items():
         typer.echo(f'  {name:<24} [{tmpl.manager}]  {tmpl.source}')
+
+
+@app.command()
+def add(
+    name: Annotated[str, typer.Argument(help='New template name to add to config.toml')],
+    source: Annotated[str, typer.Argument(help='Git repository URL for the template')],
+    manager: Annotated[
+        str, typer.Option('--manager', '-m', help='Template engine: copier or cruft.')
+    ] = 'copier',
+) -> None:
+    """Register a new template in config.toml."""
+    if manager not in _KNOWN_MANAGERS:
+        typer.echo(
+            f'Unknown manager "{manager}". Supported: {", ".join(sorted(_KNOWN_MANAGERS))}',
+            err=True,
+        )
+        raise typer.Exit(1)
+    config_writer.add_template(name, source, manager=manager, path=CONFIG_PATH)
+    typer.echo(f"Added template '{name}' to {CONFIG_PATH}.")

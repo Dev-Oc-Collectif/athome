@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from athome.cli import project as project_module
 from athome.cli.main import app
 from athome.definitions.config import AthomeConfig
 from athome.definitions.config import TemplateConfig
@@ -30,9 +31,9 @@ class TestHelp:
         result = runner.invoke(app, ['--help'])
         assert 'profile' in result.output
 
-    def test_root_help_lists_workspace(self) -> None:
+    def test_root_help_lists_repo(self) -> None:
         result = runner.invoke(app, ['--help'])
-        assert 'workspace' in result.output
+        assert 'repo' in result.output
 
     def test_root_help_lists_create_alias(self) -> None:
         result = runner.invoke(app, ['--help'])
@@ -59,8 +60,8 @@ class TestHelp:
 class TestCreateAlias:
     def test_create_alias_resolves_template_from_config(self, tmp_path: Path) -> None:
         with (
-            patch('athome.commands.project.load_config', return_value=_CFG),
-            patch('athome.commands.project._engine.create') as mock_create,
+            patch('athome.cli.project.load_config', return_value=_CFG),
+            patch.object(project_module._ENGINES['copier'], 'create') as mock_create,
         ):
             result = runner.invoke(app, ['create', 'python', str(tmp_path / 'p')])
         assert result.exit_code == 0
@@ -72,8 +73,8 @@ class TestCreateAlias:
     def test_create_alias_with_direct_url(self, tmp_path: Path) -> None:
         url = 'https://github.com/other/template'
         with (
-            patch('athome.commands.project.load_config', return_value=_EMPTY_CFG),
-            patch('athome.commands.project._engine.create') as mock_create,
+            patch('athome.cli.project.load_config', return_value=_EMPTY_CFG),
+            patch.object(project_module._ENGINES['copier'], 'create') as mock_create,
         ):
             runner.invoke(app, ['create', url, str(tmp_path / 'p')])
         mock_create.assert_called_once_with(url, tmp_path / 'p')
@@ -81,12 +82,12 @@ class TestCreateAlias:
 
 class TestTemplatesAlias:
     def test_templates_alias_shows_names(self) -> None:
-        with patch('athome.commands.template.load_config', return_value=_CFG):
+        with patch('athome.cli.templates.load_config', return_value=_CFG):
             result = runner.invoke(app, ['templates'])
         assert 'python' in result.output
 
     def test_templates_alias_empty_config_prints_guidance(self) -> None:
-        with patch('athome.commands.template.load_config', return_value=_EMPTY_CFG):
+        with patch('athome.cli.templates.load_config', return_value=_EMPTY_CFG):
             result = runner.invoke(app, ['templates'])
         assert result.exit_code == 0
         assert '[templates]' in result.output
@@ -97,10 +98,6 @@ class TestSubCommandRouting:
         result = runner.invoke(app, ['profile', '--help'])
         assert result.exit_code == 0
         assert 'sync' in result.output
-
-    def test_workspace_subgroup_reachable(self) -> None:
-        result = runner.invoke(app, ['workspace', '--help'])
-        assert result.exit_code == 0
 
     def test_system_subgroup_reachable(self) -> None:
         result = runner.invoke(app, ['system', '--help'])
@@ -120,4 +117,16 @@ class TestSubCommandRouting:
 
     def test_config_subgroup_reachable(self) -> None:
         result = runner.invoke(app, ['config', '--help'])
+        assert result.exit_code == 0
+
+    def test_mise_subgroup_reachable(self) -> None:
+        result = runner.invoke(app, ['mise', '--help'])
+        assert result.exit_code == 0
+
+    def test_brew_subgroup_reachable(self) -> None:
+        result = runner.invoke(app, ['brew', '--help'])
+        assert result.exit_code == 0
+
+    def test_cleanup_command_reachable(self) -> None:
+        result = runner.invoke(app, ['cleanup', '--help'])
         assert result.exit_code == 0

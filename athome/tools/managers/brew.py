@@ -1,17 +1,17 @@
-"""ToolManager implementation backed by Homebrew."""
+"""Homebrew-backed developer tool manager."""
 
 from __future__ import annotations
 
 import subprocess  # nosec
 from pathlib import Path
 
+from athome.definitions.managers.base import BaseManager
 from athome.definitions.managers.base import RequireInstalled
-from athome.definitions.managers.tool import ToolManager
 
 _INSTALL_HINT = 'https://brew.sh/'
 
 
-class BrewToolManager(ToolManager):
+class BrewManager(BaseManager):
     """Developer tool manager backed by the Homebrew CLI.
 
     Manifest-based installs use a Brewfile; upgrades and version pinning
@@ -46,3 +46,14 @@ class BrewToolManager(ToolManager):
     def doctor(self) -> None:
         """Run Homebrew diagnostics."""
         self._run('doctor')
+
+    def cleanup(self, manifest: Path, *, force: bool = False) -> None:
+        """Remove formulae/casks not declared in the Brewfile at *manifest*.
+
+        Without *force*, brew's own default behavior applies: list what would
+        be removed without actually removing it.
+        """
+        args = ['bundle', 'cleanup', f'--file={manifest}']
+        if force:
+            args.append('--force')
+        self._run(*args)

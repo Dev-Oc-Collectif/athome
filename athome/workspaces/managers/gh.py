@@ -5,7 +5,10 @@ from __future__ import annotations
 import subprocess  # nosec
 from pathlib import Path
 
+from athome.definitions.managers.base import RequireInstalled
 from athome.definitions.managers.workspace import WorkspaceManager
+
+_INSTALL_HINT = 'https://cli.github.com/'
 
 
 class GhManager(WorkspaceManager):
@@ -14,6 +17,8 @@ class GhManager(WorkspaceManager):
     Delegates all git/API operations to the gh binary so that authentication
     is handled by `gh auth` and no tokens are stored in athome config.
     """
+
+    REQUIRES = [RequireInstalled('gh', _INSTALL_HINT)]
 
     def _run(self, *args: str) -> None:
         subprocess.run(['gh', *args], check=True)  # noqa: S603 # nosec

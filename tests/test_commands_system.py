@@ -22,73 +22,42 @@ def _none_present(_tool: str) -> None:
 
 class TestSystemDoctor:
     def test_all_tools_present_exits_zero(self) -> None:
-        with patch('athome.commands.system.shutil.which', side_effect=_all_present):
-            result = runner.invoke(app, ['doctor'])
+        with patch('athome.cli.system.shutil.which', side_effect=_all_present):
+            result = runner.invoke(app, [])
         assert result.exit_code == 0
 
     def test_all_tools_present_prints_check_marks(self) -> None:
-        with patch('athome.commands.system.shutil.which', side_effect=_all_present):
-            result = runner.invoke(app, ['doctor'])
+        with patch('athome.cli.system.shutil.which', side_effect=_all_present):
+            result = runner.invoke(app, [])
         assert '✓' in result.output
 
     def test_missing_tool_exits_one(self) -> None:
-        with patch('athome.commands.system.shutil.which', side_effect=_none_present):
-            result = runner.invoke(app, ['doctor'])
+        with patch('athome.cli.system.shutil.which', side_effect=_none_present):
+            result = runner.invoke(app, [])
         assert result.exit_code == 1
 
     def test_missing_tool_prints_cross_mark(self) -> None:
-        with patch('athome.commands.system.shutil.which', side_effect=_none_present):
-            result = runner.invoke(app, ['doctor'])
+        with patch('athome.cli.system.shutil.which', side_effect=_none_present):
+            result = runner.invoke(app, [])
         assert '✗' in result.output
 
     def test_partial_tools_shows_both_marks(self) -> None:
-        present = {'uv', 'just'}
+        present = {'chezmoi', 'gh'}
 
         def side_effect(tool: str) -> str | None:
             return f'/usr/bin/{tool}' if tool in present else None
 
-        with patch('athome.commands.system.shutil.which', side_effect=side_effect):
-            result = runner.invoke(app, ['doctor'])
+        with patch('athome.cli.system.shutil.which', side_effect=side_effect):
+            result = runner.invoke(app, [])
         assert '✓' in result.output
         assert '✗' in result.output
 
     def test_all_required_tools_checked(self) -> None:
         checked: list[str] = []
         with patch(
-            'athome.commands.system.shutil.which',
+            'athome.cli.system.shutil.which',
             side_effect=checked.append,
         ):
-            runner.invoke(app, ['doctor'])
+            runner.invoke(app, [])
         for tool in _REQUIRED_TOOLS:
             assert tool in checked
-
-
-class TestSystemUpgrade:
-    def test_mise_missing_exits_one(self) -> None:
-        with patch('athome.commands.system.shutil.which', return_value=None):
-            result = runner.invoke(app, ['upgrade'])
-        assert result.exit_code == 1
-
-    def test_mise_missing_prints_error(self) -> None:
-        with patch('athome.commands.system.shutil.which', return_value=None):
-            result = runner.invoke(app, ['upgrade'])
-        assert 'mise' in result.stderr
-
-    def test_mise_present_calls_upgrade(self) -> None:
-        with (
-            patch('athome.commands.system.shutil.which', return_value='/usr/bin/mise'),
-            patch('athome.tool_managers.mise.MiseToolManager.upgrade') as mock_upgrade,
-            patch('athome.interfaces.base.shutil.which', return_value='/usr/bin/mise'),
-        ):
-            result = runner.invoke(app, ['upgrade'])
-        assert result.exit_code == 0
-        mock_upgrade.assert_called_once_with()
-
-    def test_mise_present_prints_message(self) -> None:
-        with (
-            patch('athome.commands.system.shutil.which', return_value='/usr/bin/mise'),
-            patch('athome.tool_managers.mise.MiseToolManager.upgrade'),
-            patch('athome.interfaces.base.shutil.which', return_value='/usr/bin/mise'),
-        ):
-            result = runner.invoke(app, ['upgrade'])
-        assert 'mise' in result.output.lower()

@@ -1,36 +1,20 @@
 [profiles]
-personal = "https://github.com/user/chezuser"  # Default `chezmoi`
-ec2 = { source = "https://github.com/user/ec2", manager = "chezmoi" }
-self-work = { source = "https://github.com/org/user-setup", manager = "dotter" }
-setup-remote = { source = "https://github.com/org/vm-setup", manager = "dotter", backup = "work-env", loads = ["base", "self-work"] }
-
-[profiles.backup]
-default-backup = "base"  # Name of the first backup made before any profile application.
-profile-backup = "{profile.name}"  # a configurable or fix name for each profile, before applying a new profile the current one is backuped is this format.
+personal = "https://github.com/user/chezuser"
+work = { source = "https://github.com/org/dotfiles-work", loads = ["personal"] }
 
 [templates]
 self-python-template = { source = "https://github.com/user/python-template", manager = "copier" }
-self-zola-template = "https://github.com/user/python-template"  # Default: `copier`
-work-python-template = {source = "https://github.com/org/uv-template", manager = "cookiecutter" }
+self-zola-template = "https://github.com/user/zola-template"  # Default: `copier`
+work-cookiecutter-template = { source = "https://github.com/org/uv-template", manager = "cruft" }
 
 [workspace]
-destination = "~/workspace"   # default clone destination for all providers
+destination = "~/workspace"   # default clone destination
 
 [workspace.owners]
-user = { source = "https://github.com/user", manager = "gh" }
-work = { source = "https://selfhosted.com/org", manager = "gitlab" }
+user = { source = "https://github.com/user" }
 
-[workspace.repos]  # extra repos management not fully managed from the org/users
-open-source = "https://github.com/open/source"  # Default: `gh`
-contract-superversion = { source = "https://github.com/open/source", manager = "gitlab" }
+[workspace.repos]  # extra repos not fully covered by an owner group
+open-source = "https://github.com/open/source"
 
-[tools]
-perso-packages = { manager = "brew", manifest = "~/.config/athome/Brewfile" }
-work-packages = { manager = "mise", manifest = "~/.config/athome/work-mise.toml" }
-
-[env]
-work = { engine = "mise", shell = "zsh" }
-user = {engine = "direnv", shell = "zsh"}
-
-[env.variables]
-ATHOME_ENV = "production"
+[brew]
+perso-packages = { manifest = "~/.config/athome/Brewfile" }

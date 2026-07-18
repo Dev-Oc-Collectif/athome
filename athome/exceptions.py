@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import click
 
 
@@ -24,46 +22,13 @@ class ToolNotFoundError(click.ClickException):
         super().__init__(message)
 
 
-class AthomeException(Exception):  # noqa: N818
-    """Exception de base pour l'application Athome."""
+class ConfigEntryExistsError(click.ClickException):
+    """Raised when an `add` command targets a name that already exists in config.toml."""
 
-    pass
-
-
-class EntryNotFoundError(AthomeException):
-    """Levée quand une clé (ex: 'work') n'existe pas dans le TOML."""
-
-    def __init__(self, domain_label: str, name: str, defined_keys: list[str]):
-        self.domain_label = domain_label
+    def __init__(self, name: str, section: str) -> None:
         self.name = name
-        self.defined_keys = defined_keys
-        super().__init__(f'{domain_label} entry "{name}" not found.')
-
-
-class ManagerNotFoundError(AthomeException):
-    """Levée quand le plugin/manager sous-jacent (ex: 'chezmoi') n'est pas dispo."""
-
-    def __init__(self, domain_label: str, manager_name: str):
-        self.domain_label = domain_label
-        self.manager_name = manager_name
-        super().__init__(f'No {domain_label.lower()} manager "{manager_name}" available.')
-
-
-class ManagerDefinitionError(AthomeException):
-    """Levée quand le manager sous-jacent est mal défini dans le TOML."""
-
-    pass
-
-
-class ManagerSourceCodeError(AthomeException):
-    """Levée quand le manager sous-jacent est mal défini dans le code."""
-
-    def __init__(self, param: str) -> None:
-        super().__init__(f'Missing Parameter {param}')
-
-
-class ManagerSourceCodeMissingError[T: AthomeException](ExceptionGroup):
-    """Plop."""
-
-    def __init__(self, missed: str, exceptions: Sequence[T]) -> None:
-        super().__init__(f'Missing {missed} in Manager(s)', exceptions)
+        self.section = section
+        super().__init__(
+            f"'{name}' already exists in [{section}] — choose a different name "
+            'or edit config.toml directly.'
+        )

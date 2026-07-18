@@ -25,21 +25,21 @@ class TestCopierEngineContract:
 class TestCopierCreate:
     def test_calls_run_copy(self) -> None:
         engine = CopierEngine()
-        with patch('athome.templates_managers.copier.copier.run_copy') as mock_copy:
+        with patch('athome.templates.managers.copier.copier.run_copy') as mock_copy:
             engine.create('https://example.com/template', Path('/dest'))
         mock_copy.assert_called_once()
 
     def test_passes_url_as_first_arg(self) -> None:
         engine = CopierEngine()
         url = 'https://github.com/org/template'
-        with patch('athome.templates_managers.copier.copier.run_copy') as mock_copy:
+        with patch('athome.templates.managers.copier.copier.run_copy') as mock_copy:
             engine.create(url, Path('/dest'))
         assert mock_copy.call_args[0][0] == url
 
     def test_passes_destination_as_string(self) -> None:
         engine = CopierEngine()
         dest = Path('/my/project')
-        with patch('athome.templates_managers.copier.copier.run_copy') as mock_copy:
+        with patch('athome.templates.managers.copier.copier.run_copy') as mock_copy:
             engine.create('https://example.com/t', dest)
         assert mock_copy.call_args[0][1] == str(dest)
 
@@ -47,14 +47,14 @@ class TestCopierCreate:
 class TestCopierUpdate:
     def test_calls_run_update(self) -> None:
         engine = CopierEngine()
-        with patch('athome.templates_managers.copier.copier.run_update') as mock_update:
+        with patch('athome.templates.managers.copier.copier.run_update') as mock_update:
             engine.update(Path('/my/project'))
         mock_update.assert_called_once()
 
     def test_passes_destination_as_string(self) -> None:
         engine = CopierEngine()
         dest = Path('/my/project')
-        with patch('athome.templates_managers.copier.copier.run_update') as mock_update:
+        with patch('athome.templates.managers.copier.copier.run_update') as mock_update:
             engine.update(dest)
         assert mock_update.call_args[0][0] == str(dest)
 
@@ -75,21 +75,21 @@ class TestCookieCutterEngineContract:
 class TestCookieCutterCreate:
     def test_calls_cruft_create(self) -> None:
         engine = CookieCutterEngine()
-        with patch('athome.templates_managers.cruft.cruft.create') as mock_create:
+        with patch('athome.templates.managers.cookiecutter.cruft.create') as mock_create:
             engine.create('https://example.com/template', Path('/dest'))
         mock_create.assert_called_once()
 
     def test_passes_template_url(self) -> None:
         engine = CookieCutterEngine()
         url = 'https://github.com/org/cookiecutter-template'
-        with patch('athome.templates_managers.cruft.cruft.create') as mock_create:
+        with patch('athome.templates.managers.cookiecutter.cruft.create') as mock_create:
             engine.create(url, Path('/dest'))
         assert mock_create.call_args[1]['template_git_url'] == url
 
     def test_passes_output_dir(self) -> None:
         engine = CookieCutterEngine()
         dest = Path('/my/project')
-        with patch('athome.templates_managers.cruft.cruft.create') as mock_create:
+        with patch('athome.templates.managers.cookiecutter.cruft.create') as mock_create:
             engine.create('https://example.com/t', dest)
         assert mock_create.call_args[1]['output_dir'] == dest
 
@@ -97,13 +97,13 @@ class TestCookieCutterCreate:
 class TestCookieCutterUpdate:
     def test_calls_cruft_update(self) -> None:
         engine = CookieCutterEngine()
-        with patch('athome.templates_managers.cruft.cruft.update') as mock_update:
+        with patch('athome.templates.managers.cookiecutter.cruft.update') as mock_update:
             engine.update(Path('/my/project'))
         mock_update.assert_called_once()
 
     def test_passes_project_dir(self) -> None:
         engine = CookieCutterEngine()
         dest = Path('/my/project')
-        with patch('athome.templates_managers.cruft.cruft.update') as mock_update:
+        with patch('athome.templates.managers.cookiecutter.cruft.update') as mock_update:
             engine.update(dest)
         assert mock_update.call_args[1]['project_dir'] == dest

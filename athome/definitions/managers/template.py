@@ -17,10 +17,6 @@ class TemplateEngine(ABC):
     from AthomeConfig.templates) before being passed here.
     """
 
-    DOMAIN_LABEL = 'Template'
-    CONFIG_ATTR = 'templates'
-    NAMESPACE = 'athome.template'
-
     @abstractmethod
     def create(self, template_url: str, destination: Path) -> None:
         """Scaffold a new project from *template_url* into *destination*."""

@@ -1,4 +1,4 @@
-"""System commands — health checks and tool upgrades via the ToolManager."""
+"""System commands — health checks for athome's required backends."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import shutil
 
 import typer
 
-app = typer.Typer(help='System health checks and tool management.')
+app = typer.Typer(help='System health checks.')
 
-_REQUIRED_TOOLS = ('uv', 'just', 'mise', 'chezmoi', 'gh', 'direnv')
+_REQUIRED_TOOLS = ('chezmoi', 'gh', 'brew', 'mise')
 
 
 @app.command()
@@ -24,15 +24,3 @@ def doctor() -> None:
 
     if not all_ok:
         raise typer.Exit(1)
-
-
-@app.command()
-def upgrade() -> None:
-    """Upgrade all managed runtimes and tools via mise."""
-    if not shutil.which('mise'):
-        typer.echo('mise is not installed — cannot upgrade tools.', err=True)
-        raise typer.Exit(1)
-    from athome.tools.managers.mise import MiseToolManager  # noqa: PLC0415
-
-    typer.echo('Upgrading tools via mise...')
-    MiseToolManager().upgrade()

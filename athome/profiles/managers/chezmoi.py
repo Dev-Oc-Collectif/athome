@@ -1,4 +1,4 @@
-"""SharedFileManager implementation backed by chezmoi."""
+"""Chezmoi-backed dotfile manager."""
 
 from __future__ import annotations
 
@@ -9,14 +9,13 @@ from athome.definitions.config import ProfileConfig
 from athome.definitions.config import profile_config_path
 from athome.definitions.config import profile_source_path
 from athome.definitions.config import profile_state_path
+from athome.definitions.managers.base import BaseManager
 from athome.definitions.managers.base import RequireInstalled
-from athome.definitions.managers.profile import ProfileManager
-from athome.profiles.backup import backup_files
 
 _INSTALL_HINT = 'https://chezmoi.io/'
 
 
-class ChezmoiManager(ProfileManager):
+class ChezmoiManager(BaseManager):
     """Chezmoi-backed dotfile manager with per-profile path isolation.
 
     Each profile gets its own --source / --config / --state flags so that a
@@ -36,6 +35,18 @@ class ChezmoiManager(ProfileManager):
     def _run(self, profile: ProfileConfig, *args: str) -> None:
         cmd: list[str] = ['chezmoi', *self._profile_flags(profile), *args]
         subprocess.run(cmd, check=True)  # noqa: S603 # nosec
+
+    def render_template(self, profile: ProfileConfig, template_path: Path) -> str:
+        """Render *template_path* (a .tmpl file) through *profile*'s chezmoi templating."""
+        cmd = ['chezmoi', *self._profile_flags(profile), 'execute-template']
+        result = subprocess.run(  # noqa: S603 # nosec
+            cmd,
+            input=template_path.read_text(),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
 
     def is_initialized(self, profile: ProfileConfig) -> bool:
         """Return True if the profile source directory exists."""
@@ -66,57 +77,3 @@ class ChezmoiManager(ProfileManager):
     def status(self, profile: ProfileConfig) -> None:
         """Show managed files status for *profile*."""
         self._run(profile, 'status')
-
-    def list_pending_paths(self, profile: ProfileConfig) -> list[Path]:
-        """Return target paths that currently exist and will be touched by the next apply."""
-        result = subprocess.run(  # noqa: S603 # nosec
-            ['chezmoi', *self._profile_flags(profile), 'status'],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        home = Path.home()
-        paths: list[Path] = []
-        for line in result.stdout.splitlines():
-            if len(line) < 3:  # noqa: PLR2004
-                continue
-            path_str = line[3:].strip()
-            if not path_str:
-                continue
-            path = Path(path_str) if Path(path_str).is_absolute() else home / path_str
-            if path.exists() and path.is_file():
-                paths.append(path)
-        return paths
-
-    def _list_managed_paths(self, profile: ProfileConfig) -> list[Path]:
-        """Return all paths currently managed by *profile* that exist on disk."""
-        result = subprocess.run(  # noqa: S603 # nosec
-            ['chezmoi', *self._profile_flags(profile), 'managed', '--path-style=absolute'],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        home = Path.home()
-        paths: list[Path] = []
-        for line in result.stdout.splitlines():
-            path_str = line.strip()
-            if not path_str:
-                continue
-            path = Path(path_str) if Path(path_str).is_absolute() else home / path_str
-            if path.exists() and path.is_file():
-                paths.append(path)
-        return paths
-
-    def backup(self, profile: ProfileConfig, backup_dir: Path) -> int:
-        """Snapshot files that will be touched by the next apply into *backup_dir*.
-
-        Returns the count of files actually copied.
-        """
-        paths = self.list_pending_paths(profile)
-        return backup_files(paths, backup_dir)
-
-    def unapply(self, profile: ProfileConfig, safe_paths: frozenset[Path]) -> None:
-        """Remove files introduced by *profile* that are not in *safe_paths*."""
-        for path in self._list_managed_paths(profile):
-            if path not in safe_paths:
-                path.unlink(missing_ok=True)

@@ -1,4 +1,4 @@
-"""Tests for athome.config — configuration parser and path helpers."""
+"""Tests for athome.definitions.config — configuration parser and path helpers."""
 
 from __future__ import annotations
 
@@ -7,8 +7,6 @@ from pathlib import Path
 import pytest
 
 from athome.definitions.config import AthomeConfig
-from athome.definitions.config import EnvConfig
-from athome.definitions.config import ProfileBackupConfig
 from athome.definitions.config import ProfileConfig
 from athome.definitions.config import WorkspaceConfig
 from athome.definitions.config import load_config
@@ -69,20 +67,6 @@ class TestLoadConfigProfiles:
         assert result.profiles['dev'].source == 'https://github.com/user/dotfiles-dev'
         assert result.templates == {}
 
-    def test_profile_default_manager_is_chezmoi(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_bytes(b'[profiles]\nwork = "https://github.com/org/dotfiles"\n')
-        result = load_config(p)
-        assert result.profiles['work'].manager == 'chezmoi'
-
-    def test_profile_inline_table_manager_field(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text(
-            '[profiles]\nwork = {source = "https://github.com/org/dots", manager = "dotter"}\n'
-        )
-        result = load_config(p)
-        assert result.profiles['work'].manager == 'dotter'
-
     def test_profile_loads_field(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
         p.write_text(
@@ -92,34 +76,6 @@ class TestLoadConfigProfiles:
         )
         result = load_config(p)
         assert result.profiles['work'].loads == ['base']
-
-    def test_profile_backup_field(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text(
-            '[profiles]\nwork = {source = "https://github.com/org/dots", backup = "my-backup"}\n'
-        )
-        result = load_config(p)
-        assert result.profiles['work'].backup == 'my-backup'
-
-    def test_profiles_backup_subsection_not_treated_as_profile(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text(
-            '[profiles]\n'
-            'work = "https://github.com/org/dots"\n'
-            '\n'
-            '[profiles.backup]\n'
-            'default-backup = "base"\n'
-        )
-        result = load_config(p)
-        assert 'backup' not in result.profiles
-        assert result.profile_backup.default_backup == 'base'
-
-    def test_profiles_backup_default_values(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_bytes(b'[profiles]\nwork = "https://github.com/org/dots"\n')
-        result = load_config(p)
-        assert result.profile_backup.default_backup == 'base'
-        assert result.profile_backup.profile_backup == '{profile.name}'
 
 
 class TestLoadConfigTemplates:
@@ -164,34 +120,16 @@ class TestLoadConfigWorkspace:
         result = load_config(config_file)
         assert result.workspace.owners['my-org'].source == 'https://github.com/my-org'
 
-    def test_parses_owner_manager(self, config_file: Path) -> None:
-        result = load_config(config_file)
-        assert result.workspace.owners['my-org'].manager == 'gh'
-
     def test_parses_repo_entries(self, config_file: Path) -> None:
         result = load_config(config_file)
         assert result.workspace.repos['dotfiles'].source == 'https://github.com/user/dotfiles'
 
-    def test_repo_default_manager(self, config_file: Path) -> None:
-        result = load_config(config_file)
-        assert result.workspace.repos['dotfiles'].manager == 'gh'
-
-    def test_owner_bare_url_defaults_to_gh(self, tmp_path: Path) -> None:
+    def test_owner_bare_url(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
         p.write_bytes(b'[workspace.owners]\nmyorg = "https://github.com/myorg"\n')
         result = load_config(p)
         assert result.workspace.owners['myorg'].source == 'https://github.com/myorg'
-        assert result.workspace.owners['myorg'].manager == 'gh'
         assert result.profiles == {}
-
-    def test_owner_explicit_manager(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text(
-            '[workspace.owners]\n'
-            'work = {source = "https://selfhosted.com/org", manager = "gitlab"}\n'
-        )
-        result = load_config(p)
-        assert result.workspace.owners['work'].manager == 'gitlab'
 
     def test_missing_workspace_section_yields_empty_workspace(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
@@ -213,52 +151,28 @@ class TestLoadConfigWorkspace:
         assert result.workspace.destination.target == Path.home() / 'workspace'
 
 
-class TestLoadConfigTools:
-    def test_parses_tool_entries(self, tmp_path: Path) -> None:
-        manifest = tmp_path / 'mise.toml'
+class TestLoadConfigBrew:
+    def test_parses_brew_entries(self, tmp_path: Path) -> None:
+        manifest = tmp_path / 'Brewfile'
         manifest.touch()
         p = tmp_path / 'config.toml'
-        p.write_text(f'[tools]\nwork-packages = {{manager = "mise", manifest = "{manifest}"}}\n')
+        p.write_text(f'[brew]\nwork-packages = {{manifest = "{manifest}"}}\n')
         result = load_config(p)
-        assert 'work-packages' in result.tools
-        assert result.tools['work-packages'].manager == 'mise'
+        assert 'work-packages' in result.brew
+        assert result.brew['work-packages'].manifest == manifest
 
-    def test_missing_tools_section_returns_empty(self, tmp_path: Path) -> None:
+    def test_bare_string_entry(self, tmp_path: Path) -> None:
+        manifest = tmp_path / 'Brewfile'
+        p = tmp_path / 'config.toml'
+        p.write_text(f'[brew]\nwork-packages = "{manifest}"\n')
+        result = load_config(p)
+        assert result.brew['work-packages'].manifest == manifest
+
+    def test_missing_brew_section_returns_empty(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
         p.write_bytes(b'[profiles]\nwork = "url"\n')
         result = load_config(p)
-        assert result.tools == {}
-
-
-class TestLoadConfigEnv:
-    def test_parses_env_entries(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text('[env]\nwork = {engine = "mise", shell = "zsh"}\n')
-        result = load_config(p)
-        assert 'work' in result.env.entries
-        assert result.env.entries['work'].engine == 'mise'
-        assert result.env.entries['work'].shell == 'zsh'
-
-    def test_parses_env_variables(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text('[env.variables]\nATHOME_ENV = "production"\n')
-        result = load_config(p)
-        assert result.env.variables['ATHOME_ENV'] == 'production'
-
-    def test_variables_not_treated_as_env_entry(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text(
-            '[env]\nwork = {engine = "mise", shell = "zsh"}\n\n[env.variables]\nFOO = "bar"\n'
-        )
-        result = load_config(p)
-        assert 'variables' not in result.env.entries
-
-    def test_missing_env_section_returns_empty(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_bytes(b'[profiles]\nwork = "url"\n')
-        result = load_config(p)
-        assert result.env.entries == {}
-        assert result.env.variables == {}
+        assert result.brew == {}
 
 
 class TestLoadConfigRichProfileFormat:
@@ -308,10 +222,6 @@ class TestDataclasses:
         with pytest.raises(AttributeError):
             p.name = 'y'  # type: ignore[misc] # ty: ignore[invalid-assignment]
 
-    def test_profile_config_default_manager(self) -> None:
-        p = ProfileConfig(name='x', source='url')
-        assert p.manager == 'chezmoi'
-
     def test_profile_config_default_loads(self) -> None:
         p = ProfileConfig(name='x', source='url')
         assert p.loads == []
@@ -322,24 +232,11 @@ class TestDataclasses:
         assert g.repos == {}
         assert g.destination.target == Path.home() / 'workspace'
 
-    def test_profile_backup_config_defaults(self) -> None:
-        b = ProfileBackupConfig()
-        assert b.default_backup == 'base'
-        assert b.profile_backup == '{profile.name}'
-
-    def test_env_config_defaults(self) -> None:
-        e = EnvConfig()
-        assert e.entries == {}
-        assert e.variables == {}
-
     def test_athome_config_defaults(self) -> None:
         c = AthomeConfig()
         assert c.profiles == {}
         assert c.templates == {}
         assert isinstance(c.workspace, WorkspaceConfig)
-        assert isinstance(c.profile_backup, ProfileBackupConfig)
-        assert isinstance(c.env, EnvConfig)
-        assert c.managers == {}
 
 
 _P = ProfileConfig(name='myprofile', source='url')

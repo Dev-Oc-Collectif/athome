@@ -31,22 +31,23 @@ def _prompt_entries(
     return entries
 
 
+def _build_entry_line(element: dict[str, str]) -> str:
+    """Render one `name = {field = "value", ...}` line from a prompted entry."""
+    fields = ', '.join(
+        f'{inner_key} = "{inner_value}"'
+        for inner_key, inner_value in element.items()
+        if inner_key != 'name'
+    )
+    return f'{element["name"]} = {{{fields}}}'
+
+
 def _build_toml(**sections: list[dict[str, str]]) -> str:
     """Render a config.toml string from the collected interactive data."""
     lines: list[str] = ['# athome configuration — ~/.config/athome/config.toml', '']
 
     for key, section in sections.items():
         lines.append(f'[{key}]')
-        lines.extend(
-            f'{element["name"]} = {{{
-                ", ".join(
-                    f'{innerkey} = "{element[innerkey]}"'
-                    for innerkey in element
-                    if innerkey != "name"
-                )
-            }}}'
-            for element in section
-        )
+        lines.extend(_build_entry_line(element) for element in section)
         lines.append('')
 
     return '\n'.join(lines)
@@ -58,7 +59,7 @@ def init(
 ) -> None:
     """Interactively create a config.toml at the default config path.
 
-    Prompts for each section (profiles, templates, workspace, tools, env).
+    Prompts for each section (profiles, templates, workspace, tools).
     Press Enter with an empty name to finish any section and move on.
     """
     if CONFIG_PATH.exists() and not force:
@@ -75,9 +76,7 @@ def init(
     configuration_data: dict[str, list[dict[str, str]]] = {}
 
     if typer.confirm('Configure profiles?', default=False):
-        configuration_data['profiles'] = _prompt_entries(
-            'Profile', [('source', ''), ('manager', 'chezmoi')]
-        )
+        configuration_data['profiles'] = _prompt_entries('Profile', [('source', '')])
 
     if typer.confirm('Configure templates?', default=False):
         configuration_data['templates'] = _prompt_entries(
@@ -92,25 +91,14 @@ def init(
             }
         ]
         if typer.confirm('  Add workspace owners?', default=False):
-            configuration_data['workspace.owners'] = _prompt_entries(
-                '  Owner', [('source', ''), ('manager', 'gh')]
-            )
+            configuration_data['workspace.owners'] = _prompt_entries('  Owner', [('source', '')])
         if typer.confirm('  Add individual repos?', default=False):
-            configuration_data['workspace.repos'] = _prompt_entries(
-                '  Repo', [('source', ''), ('manager', 'gh')]
-            )
+            configuration_data['workspace.repos'] = _prompt_entries('  Repo', [('source', '')])
 
-    if typer.confirm('Configure tools?', default=False):
-        configuration_data['tools'] = _prompt_entries(
-            'Tool entry', [('manager', 'mise'), ('manifest', '~/.config/athome/mise.toml')]
+    if typer.confirm('Configure brew?', default=False):
+        configuration_data['brew'] = _prompt_entries(
+            'Brew entry', [('manifest', '~/.config/athome/Brewfile')]
         )
-
-    if typer.confirm('Configure env contexts?', default=False):
-        configuration_data['env'] = _prompt_entries(
-            'Env context', [('engine', 'mise'), ('shell', 'zsh')]
-        )
-        if typer.confirm('  Add env variables?', default=False):
-            configuration_data['env.variables'] = _prompt_entries('  Variable', [('value', '')])
 
     content = _build_toml(**configuration_data)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)

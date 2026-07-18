@@ -1,6 +1,5 @@
 """Tool manager implementations."""
 
-from athome.tools.managers.brew import BrewToolManager
-from athome.tools.managers.mise import MiseToolManager
+from athome.tools.managers.brew import BrewManager
 
-__all__ = ['BrewToolManager', 'MiseToolManager']
+__all__ = ['BrewManager']
