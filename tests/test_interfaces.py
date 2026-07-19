@@ -15,8 +15,19 @@ class TestTemplateEngineIsAbstract:
 
     def test_full_implementation_instantiates(self) -> None:
         class Full(TemplateEngine):
-            def create(self, template_url: str, destination: object) -> None: ...
-            def update(self, destination: object) -> None: ...
+            def create(
+                self,
+                template_url: str,
+                destination: object,
+                *,
+                data: object = None,
+                trust: bool = False,
+            ) -> None: ...
+            def update(
+                self, destination: object, *, data: object = None, trust: bool = False
+            ) -> None: ...
+            def is_initialized(self, destination: object) -> bool:
+                return False
 
         assert isinstance(Full(), TemplateEngine)
 

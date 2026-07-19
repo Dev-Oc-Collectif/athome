@@ -62,11 +62,11 @@ assert_output "root lists create"    "create"     athome --help
 assert_output "root lists templates" "templates"  athome --help
 assert_output "root lists cleanup"   "cleanup"    athome --help
 
-assert_exit "profile --help"  0  athome profile  --help
-assert_exit "project --help"  0  athome project  --help
-assert_exit "repo --help"     0  athome repo     --help
-assert_exit "template --help" 0  athome template --help
-assert_exit "brew --help"     0  athome brew     --help
+assert_exit "profile --help"     0  athome profile      --help
+assert_exit "repo --help"        0  athome repo         --help
+assert_exit "template --help"    0  athome template     --help
+assert_exit "template use --help" 0 athome template use  --help
+assert_exit "brew --help"        0  athome brew         --help
 assert_exit "mise --help"     0  athome mise     --help
 assert_exit "system --help"   0  athome system   --help
 assert_exit "cleanup --help"  0  athome cleanup  --help

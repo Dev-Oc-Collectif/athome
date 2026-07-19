@@ -9,7 +9,6 @@ from athome.cli import cleanup
 from athome.cli import config
 from athome.cli import mise
 from athome.cli import profiles
-from athome.cli import project
 from athome.cli import repo
 from athome.cli import system
 from athome.cli import templates
@@ -21,16 +20,21 @@ app = typer.Typer(
 )
 
 app.add_typer(profiles.app, name='profile', help='Manage dotfile profiles (chezmoi).')
-app.add_typer(project.app, name='project', help='Scaffold and update projects (copier).')
 app.add_typer(repo.app, name='repo', help='Manage and mass-sync git repositories (gh).')
-app.add_typer(templates.app, name='template', help='Inspect available project templates.')
+app.add_typer(
+    templates.app,
+    name='template',
+    help='Inspect, register, and use project templates (copier or cruft).',
+)
 app.add_typer(brew.app, name='brew', help='Manage developer tools (brew).')
 app.add_typer(mise.app, name='mise', help='Keep mise configuration aligned across profiles.')
 app.add_typer(system.app, name='system', help='System health checks.')
 app.add_typer(config.app, name='config', help='Manage athome configuration.')
 
 # Top-level shortcut aliases
-app.command(name='create', help='Scaffold a project (alias: project create).')(project.create)
+app.command(name='create', help='Scaffold a project (alias: template use <target> create).')(
+    templates.create
+)
 app.command(name='templates', help='List templates (alias: template list).')(
     templates.list_templates
 )

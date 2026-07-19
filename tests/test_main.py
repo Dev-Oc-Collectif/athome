@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from athome.cli import project as project_module
+from athome.cli import templates as templates_module
 from athome.cli.main import app
 from athome.definitions.config import AthomeConfig
 from athome.definitions.config import TemplateConfig
@@ -60,24 +60,26 @@ class TestHelp:
 class TestCreateAlias:
     def test_create_alias_resolves_template_from_config(self, tmp_path: Path) -> None:
         with (
-            patch('athome.cli.project.load_config', return_value=_CFG),
-            patch.object(project_module._ENGINES['copier'], 'create') as mock_create,
+            patch('athome.cli.templates.load_config', return_value=_CFG),
+            patch.object(templates_module._ENGINES['copier'], 'create') as mock_create,
         ):
             result = runner.invoke(app, ['create', 'python', str(tmp_path / 'p')])
         assert result.exit_code == 0
         mock_create.assert_called_once_with(
             'https://github.com/Dev-Oc-Collectif/python-template',
             tmp_path / 'p',
+            data=None,
+            trust=False,
         )
 
     def test_create_alias_with_direct_url(self, tmp_path: Path) -> None:
         url = 'https://github.com/other/template'
         with (
-            patch('athome.cli.project.load_config', return_value=_EMPTY_CFG),
-            patch.object(project_module._ENGINES['copier'], 'create') as mock_create,
+            patch('athome.cli.templates.load_config', return_value=_EMPTY_CFG),
+            patch.object(templates_module._ENGINES['copier'], 'create') as mock_create,
         ):
             runner.invoke(app, ['create', url, str(tmp_path / 'p')])
-        mock_create.assert_called_once_with(url, tmp_path / 'p')
+        mock_create.assert_called_once_with(url, tmp_path / 'p', data=None, trust=False)
 
 
 class TestTemplatesAlias:
@@ -109,10 +111,6 @@ class TestSubCommandRouting:
 
     def test_template_subgroup_reachable(self) -> None:
         result = runner.invoke(app, ['template', '--help'])
-        assert result.exit_code == 0
-
-    def test_project_subgroup_reachable(self) -> None:
-        result = runner.invoke(app, ['project', '--help'])
         assert result.exit_code == 0
 
     def test_config_subgroup_reachable(self) -> None:

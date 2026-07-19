@@ -80,9 +80,25 @@ no active-profile-stack concept.
 
 ### Template
 
-Template centralize multiple templating project by exposing 2 methods:
-- `create` : Scaffold a new project from *template_url* into *destination*.
-- `update` : Update an existing project in *destination* to the latest template.
+Template centralizes multiple templating projects by exposing 3 methods:
+- `create` : Scaffold a new project from *template_url* into *destination*. Accepts optional
+  *data* (answer overrides) and *trust* (allow the template's declared tasks/hooks to run — maps
+  to copier's `unsafe`; has no effect on cruft/cookiecutter, whose hooks always run unconditionally
+  when present, so it is accepted and silently ignored rather than treated as an error).
+- `update` : Update an existing project in *destination* to the latest template. Accepts the same
+  optional *data* and *trust*.
+- `is_initialized` : Return True if *destination* has already been scaffolded by this engine
+  (copier: presence of `.copier-answers.yml`; cruft: presence of `.cruft.json`).
+
+`athome template use <target> <create|sync|update> [destination]` is the CLI entry point —
+`template`/`project` are one merged group. *target* is a template name from `[templates]` in
+config.toml, or a direct git URL when not found there. The manager/engine is resolved from the
+named template's config entry for all three actions — there is no `--manager` flag. `sync` is
+idempotent create-or-update: it calls `is_initialized` on *destination* first and dispatches to
+`create` or `update` accordingly. `--data key=value` (repeatable) forwards answer overrides to the
+engine. `--trust` forwards to copier's `unsafe=True`; it is a no-op for the cruft engine. `athome
+create <target> [destination]` remains a top-level shortcut for
+`athome template use <target> create [destination]`.
 
 ### Workspace
 
