@@ -62,19 +62,16 @@ def add_profile(
     source: str,
     *,
     destination: str | None = None,
-    loads: list[str] | None = None,
     path: Path = CONFIG_PATH,
 ) -> None:
     """Add a [profiles] entry — bare string when only *source* is given, else inline table."""
-    if destination is None and not loads:
+    if destination is None:
         _add_entry(path, ('profiles',), name, source)
         return
     entry = tomlkit.inline_table()
     entry['source'] = source
     if destination is not None:
         entry['destination'] = destination
-    if loads:
-        entry['loads'] = loads
     _add_entry(path, ('profiles',), name, entry)
 
 

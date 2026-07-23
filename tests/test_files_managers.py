@@ -70,14 +70,21 @@ class TestProfileFlags:
 
 
 class TestIsInitialized:
-    def test_returns_true_when_source_dir_exists(self, tmp_path: Path) -> None:
+    def test_returns_true_when_source_dir_is_a_git_checkout(self, tmp_path: Path) -> None:
         source = tmp_path / 'work'
-        source.mkdir()
+        (source / '.git').mkdir(parents=True)
         profile = ProfileConfig(name='work', source='url', destination=source)
         assert ChezmoiManager().is_initialized(profile) is True
 
     def test_returns_false_when_source_dir_missing(self, tmp_path: Path) -> None:
         source = tmp_path / 'work'
+        profile = ProfileConfig(name='work', source='url', destination=source)
+        assert ChezmoiManager().is_initialized(profile) is False
+
+    def test_returns_false_when_source_dir_exists_but_empty(self, tmp_path: Path) -> None:
+        """A partial/failed init can leave an empty dir behind — must not read as done."""
+        source = tmp_path / 'work'
+        source.mkdir()
         profile = ProfileConfig(name='work', source='url', destination=source)
         assert ChezmoiManager().is_initialized(profile) is False
 

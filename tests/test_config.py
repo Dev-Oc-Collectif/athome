@@ -67,16 +67,6 @@ class TestLoadConfigProfiles:
         assert result.profiles['dev'].source == 'https://github.com/user/dotfiles-dev'
         assert result.templates == {}
 
-    def test_profile_loads_field(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        p.write_text(
-            '[profiles]\n'
-            'base = "https://github.com/user/base"\n'
-            'work = {source = "https://github.com/org/dots", loads = ["base"]}\n'
-        )
-        result = load_config(p)
-        assert result.profiles['work'].loads == ['base']
-
 
 class TestLoadConfigTemplates:
     def test_parses_template_names(self, config_file: Path) -> None:
@@ -221,10 +211,6 @@ class TestDataclasses:
         p = ProfileConfig(name='x', source='url')
         with pytest.raises(AttributeError):
             p.name = 'y'  # type: ignore[misc] # ty: ignore[invalid-assignment]
-
-    def test_profile_config_default_loads(self) -> None:
-        p = ProfileConfig(name='x', source='url')
-        assert p.loads == []
 
     def test_workspace_config_defaults(self) -> None:
         g = WorkspaceConfig()

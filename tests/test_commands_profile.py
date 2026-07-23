@@ -39,12 +39,6 @@ class TestAdd:
         assert args[0] == 'work'
         assert args[1] == 'https://github.com/org/dots'
         assert kwargs['destination'] is None
-        assert kwargs['loads'] == []
-
-    def test_parses_comma_separated_loads(self) -> None:
-        with patch('athome.cli.profiles.config_writer.add_profile') as mock_add:
-            runner.invoke(app, ['add', 'work', 'https://github.com/org/dots', '--loads', 'a, b'])
-        assert mock_add.call_args.kwargs['loads'] == ['a', 'b']
 
     def test_destination_passed_as_string(self, tmp_path: Path) -> None:
         with patch('athome.cli.profiles.config_writer.add_profile') as mock_add:

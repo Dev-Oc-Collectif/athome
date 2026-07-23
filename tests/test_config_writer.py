@@ -25,12 +25,6 @@ class TestAddProfile:
         content = p.read_text()
         assert 'destination = "/custom/dest"' in content
 
-    def test_inline_table_with_loads(self, tmp_path: Path) -> None:
-        p = tmp_path / 'config.toml'
-        config_writer.add_profile('work', 'https://github.com/org/dots', loads=['base'], path=p)
-        content = p.read_text()
-        assert 'loads = ["base"]' in content
-
     def test_creates_profiles_section_from_scratch(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
         config_writer.add_profile('work', 'https://github.com/org/dots', path=p)

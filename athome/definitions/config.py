@@ -16,16 +16,11 @@ PROFILES_CONFIG_BASE: Path = Path.home() / '.config' / 'athome' / 'profiles'
 
 @dataclass(frozen=True)
 class ProfileConfig:
-    """A named dotfile profile backed by a git repository, managed by chezmoi.
-
-    *loads* lists other profile names that must be active alongside this one,
-    forming a dependency stack.
-    """
+    """A named dotfile profile backed by a git repository, managed by chezmoi."""
 
     name: str
     source: str
     destination: Path | None = None
-    loads: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -92,7 +87,6 @@ def _parse_profile(name: str, value: Any) -> ProfileConfig:
         name=name,
         source=value['source'],
         destination=Path(destination_raw).expanduser() if destination_raw else None,
-        loads=list(value.get('loads', [])),
     )
 
 

@@ -48,18 +48,12 @@ def add(
             '--destination', help='Custom source checkout path (overrides the XDG default).'
         ),
     ] = None,
-    loads: Annotated[
-        str | None,
-        typer.Option('--loads', help='Comma-separated profile names this profile depends on.'),
-    ] = None,
 ) -> None:
     """Register a new profile in config.toml (does not init or apply it)."""
-    loads_list = [item.strip() for item in loads.split(',') if item.strip()] if loads else []
     config_writer.add_profile(
         name,
         source,
         destination=str(destination) if destination else None,
-        loads=loads_list,
         path=CONFIG_PATH,
     )
     typer.echo(f"Added profile '{name}' to {CONFIG_PATH}. Run 'athome profile init {name}' next.")
@@ -171,5 +165,4 @@ def list_profiles() -> None:
         return
     for profile in cfg.profiles.values():
         dest = f' (dest: {profile.destination})' if profile.destination else ''
-        loads = f' [loads: {", ".join(profile.loads)}]' if profile.loads else ''
-        typer.echo(f'  {profile.name}  →  {profile.source}{dest}{loads}')
+        typer.echo(f'  {profile.name}  →  {profile.source}{dest}')

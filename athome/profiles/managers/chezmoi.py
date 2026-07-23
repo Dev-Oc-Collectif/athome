@@ -49,8 +49,14 @@ class ChezmoiManager(BaseManager):
         return result.stdout
 
     def is_initialized(self, profile: ProfileConfig) -> bool:
-        """Return True if the profile source directory exists."""
-        return profile_source_path(profile).exists()
+        """Return True if the profile source directory is a real git checkout.
+
+        A bare existence check isn't enough: a failed `chezmoi init` (e.g. a
+        broken clone, or an interrupted config-template render) can leave an
+        empty source directory behind, which would otherwise be mistaken for
+        a completed init on every later command.
+        """
+        return (profile_source_path(profile) / '.git').exists()
 
     def init(self, profile: ProfileConfig) -> None:
         """Clone the remote repo into the profile source directory without applying."""

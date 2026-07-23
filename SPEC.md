@@ -30,7 +30,7 @@ combined-cleanup flow (`athome cleanup`) — see below.
 ```toml
 [profiles]
 personal = "https://github.com/user/chezuser"
-work = { source = "https://github.com/org/dotfiles-work", loads = ["personal"] }
+work = "https://github.com/org/dotfiles-work"
 
 [templates]
 self-python-template = { source = "https://github.com/user/python-template", manager = "copier" }
