@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 
+from athome.cli import bootstrap
 from athome.cli import brew
 from athome.cli import cleanup
 from athome.cli import config
@@ -43,6 +44,11 @@ app.command(name='setup', help='Create a starter config.toml (alias: config init
 # Top-level command spanning brew + mise across every configured profile
 app.command(name='cleanup', help='Reconcile installed brew/mise state against every profile.')(
     cleanup.cleanup
+)
+
+# One-time new-machine setup: register + clone personal, merge its athome.toml
+app.command(name='bootstrap', help='One-time setup: register + clone personal, merge athome.toml.')(
+    bootstrap.bootstrap
 )
 
 if __name__ == '__main__':  # pragma: no cover
