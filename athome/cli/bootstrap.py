@@ -23,7 +23,12 @@ cloned.
 
 from __future__ import annotations
 
+import tomllib
+from collections.abc import Callable
+from functools import partial
+from pathlib import Path
 from typing import Annotated
+from typing import Any
 
 import typer
 
@@ -40,46 +45,85 @@ _manager = ChezmoiManager()
 _ATHOME_TOML = 'athome.toml'
 
 
-def _merge_contributed(contributed: AthomeConfig) -> None:
-    """Write every entry from *contributed* into the local config.
+def _contributed_destination(athome_toml: Path) -> str | None:
+    """Read a bare [workspace] destination straight out of the raw TOML.
 
-    Skips (rather than errors on) anything that already exists locally —
-    that's what makes local entries win on conflict.
+    AthomeConfig.workspace.destination always has a value (it defaults to
+    ~/workspace when unset), so going through the typed config can't tell
+    "not declared" from "declared as the default" — the raw dict can.
     """
+    raw: dict[str, Any] = tomllib.loads(athome_toml.read_text())
+    destination_raw: Any = raw.get('workspace', {}).get('destination')
+    if destination_raw is None:
+        return None
+    if isinstance(destination_raw, str):
+        return destination_raw
+    return str(destination_raw['target'])
+
+
+def _merge_entry(add: Callable[[], None], echo_message: str) -> None:
+    """Run *add*, echoing *echo_message* unless the entry already exists locally.
+
+    Local entries always win on conflict — that's what the swallowed
+    ConfigEntryExistsError means here.
+    """
+    try:
+        add()
+    except ConfigEntryExistsError:
+        return
+    typer.echo(echo_message)
+
+
+def _merge_contributed(contributed: AthomeConfig, athome_toml: Path) -> None:
+    """Write every entry from *contributed* into the local config."""
+    destination = _contributed_destination(athome_toml)
+    if destination is not None:
+        _merge_entry(
+            partial(config_writer.add_destination, destination, path=CONFIG_PATH),
+            f'  + workspace destination -> {destination}',
+        )
+
     for name, profile in contributed.profiles.items():
-        try:
-            config_writer.add_profile(
+        _merge_entry(
+            partial(
+                config_writer.add_profile,
                 name,
                 profile.source,
                 destination=str(profile.destination) if profile.destination else None,
                 path=CONFIG_PATH,
-            )
-        except ConfigEntryExistsError:
-            continue
-        typer.echo(f"  + profile '{name}' -> {profile.source}")
+            ),
+            f"  + profile '{name}' -> {profile.source}",
+        )
 
     for name, template in contributed.templates.items():
-        try:
-            config_writer.add_template(
-                name, template.source, manager=template.manager, path=CONFIG_PATH
-            )
-        except ConfigEntryExistsError:
-            continue
-        typer.echo(f"  + template '{name}' -> {template.source}")
+        _merge_entry(
+            partial(
+                config_writer.add_template,
+                name,
+                template.source,
+                manager=template.manager,
+                path=CONFIG_PATH,
+            ),
+            f"  + template '{name}' -> {template.source}",
+        )
 
     for name, owner in contributed.workspace.owners.items():
-        try:
-            config_writer.add_owner(name, owner.source, path=CONFIG_PATH)
-        except ConfigEntryExistsError:
-            continue
-        typer.echo(f"  + workspace owner '{name}' -> {owner.source}")
+        _merge_entry(
+            partial(config_writer.add_owner, name, owner.source, path=CONFIG_PATH),
+            f"  + workspace owner '{name}' -> {owner.source}",
+        )
 
     for name, repo in contributed.workspace.repos.items():
-        try:
-            config_writer.add_repo(name, repo.source, path=CONFIG_PATH)
-        except ConfigEntryExistsError:
-            continue
-        typer.echo(f"  + workspace repo '{name}' -> {repo.source}")
+        _merge_entry(
+            partial(config_writer.add_repo, name, repo.source, path=CONFIG_PATH),
+            f"  + workspace repo '{name}' -> {repo.source}",
+        )
+
+    for name, brew_entry in contributed.brew.items():
+        _merge_entry(
+            partial(config_writer.add_brew_entry, name, str(brew_entry.manifest), path=CONFIG_PATH),
+            f"  + brew '{name}' -> {brew_entry.manifest}",
+        )
 
 
 def bootstrap(
@@ -121,5 +165,5 @@ def bootstrap(
 
     typer.echo(f'Merging {athome_toml}...')
     contributed = load_config(athome_toml)
-    _merge_contributed(contributed)
+    _merge_contributed(contributed, athome_toml)
     typer.echo("Bootstrap complete. Run 'athome profile apply-all' next.")
