@@ -85,3 +85,18 @@ class ChezmoiManager(BaseManager):
     def status(self, profile: ProfileConfig) -> None:
         """Show managed files status for *profile*."""
         self._run(profile, 'status')
+
+    def managed(self, profile: ProfileConfig) -> list[str]:
+        """Return every file target path *profile* manages, relative to the home directory."""
+        self.fallback_require_tool()
+        cmd = [
+            'chezmoi',
+            *self._profile_flags(profile),
+            'managed',
+            '--include=files',
+            '--path-style=relative',
+        ]
+        result = subprocess.run(  # noqa: S603 # nosec
+            cmd, capture_output=True, text=True, check=True
+        )
+        return [line for line in result.stdout.splitlines() if line]

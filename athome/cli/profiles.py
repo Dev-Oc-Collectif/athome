@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import Annotated
 
@@ -151,6 +152,32 @@ def status(
     manager = _manager
     _assert_initialized(profile, manager)
     manager.status(profile)
+
+
+@app.command()
+def conflicts() -> None:
+    """Report target file paths managed by more than one profile.
+
+    Uninitialized profiles are skipped — there's nothing on disk yet to
+    check. Exits 1 when a conflict is found, so this is scriptable.
+    """
+    cfg = load_config()
+    manager = _manager
+    claims: dict[str, list[str]] = defaultdict(list)
+    for profile in cfg.profiles.values():
+        if not manager.is_initialized(profile):
+            continue
+        for target in manager.managed(profile):
+            claims[target].append(profile.name)
+
+    conflicting = {target: names for target, names in claims.items() if len(names) > 1}
+    if not conflicting:
+        typer.echo('No conflicts found.')
+        return
+
+    for target, names in sorted(conflicting.items()):
+        typer.echo(f'  ~/{target}  <-  {", ".join(names)}')
+    raise typer.Exit(1)
 
 
 @app.command('list')
