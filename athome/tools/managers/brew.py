@@ -21,6 +21,7 @@ class BrewManager(BaseManager):
     REQUIRES = [RequireInstalled('brew', _INSTALL_HINT)]
 
     def _run(self, *args: str) -> None:
+        self.fallback_require_tool()
         subprocess.run(['brew', *args], check=True)  # noqa: S603 # nosec
 
     def sync(self, manifest: Path) -> None:

@@ -20,14 +20,16 @@ class RequireInstalled:
 class BaseManager:
     """Mixin that provides the standard tool-requirement contract.
 
-    Concrete managers declare ``REQUIRES`` at class level; the harness and
-    commands call ``fallback_require_tool()`` once before delegating work.
+    Concrete managers declare ``REQUIRES`` at class level. Construction never
+    checks for the tool — managers are built eagerly at CLI module import
+    time (see e.g. ``athome.cli.brew``), so raising here would mean simply
+    importing athome's CLI fails on a machine missing *any* required tool,
+    even for a command that never touches that manager. Instead, each
+    manager calls ``fallback_require_tool()`` itself at its own subprocess
+    choke point(s), right before actually shelling out.
     """
 
     REQUIRES: ClassVar[list[RequireInstalled]] = []
-
-    def __init__(self) -> None:
-        self.fallback_require_tool()
 
     def fallback_require_tool(self) -> None:
         """Raise ToolNotFoundError for the first missing tool in REQUIRES."""

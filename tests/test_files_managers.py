@@ -139,11 +139,13 @@ class TestInit:
         assert config_dir.exists()
 
     def test_raises_when_chezmoi_missing(self) -> None:
+        mgr = ChezmoiManager()
         with (
+            patch('athome.profiles.managers.chezmoi.Path.mkdir'),
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError),
         ):
-            ChezmoiManager()
+            mgr.init(PROFILE)
 
 
 class TestSync:
@@ -223,25 +225,33 @@ class TestStatus:
 
 
 class TestToolNotFound:
-    def test_raises_at_instantiation_when_chezmoi_missing(self) -> None:
+    def test_instantiation_never_raises_even_when_chezmoi_missing(self) -> None:
+        """See TestBrewToolNotFound in test_brew_manager.py for why."""
+        with patch(_BASE_PATCH, return_value=None):
+            ChezmoiManager()
+
+    def test_raises_on_first_use_when_chezmoi_missing(self) -> None:
+        mgr = ChezmoiManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError),
         ):
-            ChezmoiManager()
+            mgr.status(PROFILE)
 
     def test_error_message_names_tool(self) -> None:
+        mgr = ChezmoiManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            ChezmoiManager()
+            mgr.status(PROFILE)
         assert 'chezmoi' in exc_info.value.format_message()
 
     def test_error_includes_install_hint(self) -> None:
+        mgr = ChezmoiManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            ChezmoiManager()
+            mgr.status(PROFILE)
         assert 'chezmoi.io' in exc_info.value.format_message()
