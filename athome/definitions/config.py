@@ -13,6 +13,12 @@ CONFIG_PATH: Path = Path.home() / '.config' / 'athome' / 'config.toml'
 PROFILES_SOURCE_BASE: Path = Path.home() / '.local' / 'share' / 'athome' / 'profiles'
 PROFILES_CONFIG_BASE: Path = Path.home() / '.config' / 'athome' / 'profiles'
 
+# Mirrors chezmoi/.chezmoitemplates/layer exactly: dev = inside the dev
+# distrobox, host = on the raw Fedora atomique host, native = anywhere else
+# (WSL2, macOS).
+CONTAINERENV_PATH: Path = Path('/run/.containerenv')
+OSTREE_MARKER_PATH: Path = Path('/run/ostree-booted')
+
 
 @dataclass(frozen=True)
 class ProfileConfig:
@@ -188,6 +194,24 @@ def profile_config_path(profile_name: str) -> Path:
     return PROFILES_CONFIG_BASE / f'{profile_name}.toml'
 
 
+def layer() -> str:
+    """Return which topology layer athome is currently running in."""
+    if CONTAINERENV_PATH.exists():
+        return 'dev'
+    if OSTREE_MARKER_PATH.exists():
+        return 'host'
+    return 'native'
+
+
 def profile_state_path(profile_name: str) -> Path:
-    """Backend state path for a given profile (always XDG-derived)."""
-    return PROFILES_CONFIG_BASE / f'{profile_name}-state.db'
+    """Backend state path for a given profile (always XDG-derived).
+
+    Layer-suffixed (`{name}-dev-state.db` / `{name}-host-state.db`) so the
+    same profile can be applied independently from the host and from inside
+    the dev container without one apply's run_once state clobbering the
+    other's. Left unsuffixed (`{name}-state.db`) on the native layer, for
+    backwards compatibility with existing WSL2/macOS machines.
+    """
+    current_layer = layer()
+    suffix = f'-{current_layer}' if current_layer != 'native' else ''
+    return PROFILES_CONFIG_BASE / f'{profile_name}{suffix}-state.db'
