@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from athome.definitions.config import ProfileConfig
-from athome.definitions.config import profile_source_path
+from athome.definitions.config import profile_source_root
 
 MISE_CONFD_GLOB = 'dot_config/mise/conf.d/*.toml'
 
@@ -52,7 +52,7 @@ def collect_tool_versions(
     """Build {tool: {profile_name: version}} across every profile's mise fragments."""
     tool_versions: dict[str, dict[str, str]] = {}
     for profile in profiles.values():
-        source = profile_source_path(profile)
+        source = profile_source_root(profile)
         for fragment in sorted(source.glob(MISE_CONFD_GLOB)):
             for tool, version in _read_tools(fragment).items():
                 tool_versions.setdefault(tool, {})[profile.name] = version

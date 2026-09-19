@@ -13,6 +13,10 @@ CONFIG_PATH: Path = Path.home() / '.config' / 'athome' / 'config.toml'
 PROFILES_SOURCE_BASE: Path = Path.home() / '.local' / 'share' / 'athome' / 'profiles'
 PROFILES_CONFIG_BASE: Path = Path.home() / '.config' / 'athome' / 'profiles'
 
+# chezmoi re-roots the source directory into the subdirectory named by this
+# file when it is present at the top of the checkout.
+CHEZMOIROOT_FILENAME: str = '.chezmoiroot'
+
 # Mirrors chezmoi/.chezmoitemplates/layer exactly: dev = inside the dev
 # distrobox, host = on the raw Fedora atomique host, native = anywhere else
 # (WSL2, macOS).
@@ -187,6 +191,34 @@ def profile_source_path(profile: ProfileConfig) -> Path:
     if profile.destination is not None:
         return profile.destination
     return PROFILES_SOURCE_BASE / profile.name
+
+
+def profile_source_root(profile: ProfileConfig) -> Path:
+    """Effective chezmoi source root for *profile*, honouring ``.chezmoiroot``.
+
+    ``profile_source_path`` returns the repository checkout, which is what
+    chezmoi itself must be pointed at: chezmoi reads ``.chezmoiroot`` from
+    there and re-roots into the directory it names. Anything that reads the
+    source *tree* directly (Brewfile fragments, mise conf.d fragments) has to
+    perform the same re-rooting, or it globs one level too high and silently
+    finds nothing.
+    """
+    source = profile_source_path(profile)
+    marker = source / CHEZMOIROOT_FILENAME
+    if not marker.is_file():
+        return source
+    try:
+        relative = marker.read_text().strip()
+    except OSError:
+        return source
+    if not relative:
+        return source
+    candidate = (source / relative).resolve()
+    # A malformed or hostile .chezmoiroot ("../../..") must never redirect the
+    # glob outside the profile's own checkout.
+    if not candidate.is_relative_to(source.resolve()):
+        return source
+    return candidate
 
 
 def profile_config_path(profile_name: str) -> Path:

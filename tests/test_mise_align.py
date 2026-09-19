@@ -25,6 +25,17 @@ class TestCollectToolVersions:
 
         assert result == {'node': {'work': '20'}}
 
+    def test_collects_from_chezmoiroot_subdirectory(self, tmp_path: Path) -> None:
+        """Same `.chezmoiroot` re-rooting as the brew side — otherwise drift
+        between profiles is silently never detected."""
+        checkout = tmp_path / 'work'
+        checkout.mkdir()
+        (checkout / '.chezmoiroot').write_text('chezmoi\n')
+        _write_conf_d(checkout / 'chezmoi', 'work', '[tools]\nnode = "20"\n')
+        profile = ProfileConfig(name='work', source='url', destination=checkout)
+
+        assert collect_tool_versions({'work': profile}) == {'node': {'work': '20'}}
+
     def test_merges_multiple_fragments_in_same_profile(self, tmp_path: Path) -> None:
         source = tmp_path / 'work'
         _write_conf_d(source, 'a', '[tools]\nnode = "20"\n')

@@ -14,6 +14,7 @@ from athome.definitions.config import layer
 from athome.definitions.config import load_config
 from athome.definitions.config import profile_config_path
 from athome.definitions.config import profile_source_path
+from athome.definitions.config import profile_source_root
 from athome.definitions.config import profile_state_path
 
 
@@ -349,3 +350,44 @@ class TestPathHelpers:
         assert profile_source_path(_PWORK) != profile_source_path(_PPERSONAL)
         assert profile_config_path('work') != profile_config_path('personal')
         assert profile_state_path('work') != profile_state_path('personal')
+
+
+class TestProfileSourceRoot:
+    """`.chezmoiroot` re-rooting — chezmoi honours it, so anything reading the
+    source tree directly (Brewfile / mise conf.d fragments) must too."""
+
+    @staticmethod
+    def _profile(checkout: Path) -> ProfileConfig:
+        return ProfileConfig(name='p', source='url', destination=checkout)
+
+    def test_returns_checkout_when_no_marker(self, tmp_path: Path) -> None:
+        assert profile_source_root(self._profile(tmp_path)) == tmp_path
+
+    def test_rerooted_into_subdirectory_named_by_marker(self, tmp_path: Path) -> None:
+        (tmp_path / 'chezmoi').mkdir()
+        (tmp_path / '.chezmoiroot').write_text('chezmoi')
+        assert profile_source_root(self._profile(tmp_path)) == tmp_path / 'chezmoi'
+
+    def test_marker_content_is_whitespace_trimmed(self, tmp_path: Path) -> None:
+        (tmp_path / 'chezmoi').mkdir()
+        (tmp_path / '.chezmoiroot').write_text('  chezmoi\n')
+        assert profile_source_root(self._profile(tmp_path)) == tmp_path / 'chezmoi'
+
+    def test_empty_marker_falls_back_to_checkout(self, tmp_path: Path) -> None:
+        (tmp_path / '.chezmoiroot').write_text('   \n')
+        assert profile_source_root(self._profile(tmp_path)) == tmp_path
+
+    def test_marker_that_is_a_directory_is_ignored(self, tmp_path: Path) -> None:
+        (tmp_path / '.chezmoiroot').mkdir()
+        assert profile_source_root(self._profile(tmp_path)) == tmp_path
+
+    def test_traversal_outside_the_checkout_is_refused(self, tmp_path: Path) -> None:
+        checkout = tmp_path / 'checkout'
+        checkout.mkdir()
+        (checkout / '.chezmoiroot').write_text('../../etc')
+        assert profile_source_root(self._profile(checkout)) == checkout
+
+    def test_nested_relative_path_is_honoured(self, tmp_path: Path) -> None:
+        (tmp_path / 'a' / 'b').mkdir(parents=True)
+        (tmp_path / '.chezmoiroot').write_text('a/b')
+        assert profile_source_root(self._profile(tmp_path)) == tmp_path / 'a' / 'b'
