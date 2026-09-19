@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
@@ -98,9 +99,49 @@ class TestBrewCleanup:
         manifest.touch()
         mgr = BrewManager()
         with patch('athome.tools.managers.brew.subprocess.run') as mock_run:
+            mock_run.return_value.returncode = 0
             mgr.cleanup(manifest)
         cmd = mock_run.call_args[0][0]
         assert cmd == ['brew', 'bundle', 'cleanup', f'--file={manifest}']
+
+    def test_dry_run_exit_1_is_a_report_not_a_failure(
+        self, tmp_path: Path, brew_available: None
+    ) -> None:
+        """`brew bundle cleanup` exits 1 when it listed things to remove."""
+        manifest = tmp_path / 'Brewfile'
+        manifest.touch()
+        mgr = BrewManager()
+        with patch('athome.tools.managers.brew.subprocess.run') as mock_run:
+            mock_run.return_value.returncode = 1
+            mgr.cleanup(manifest)  # must not raise
+
+    def test_dry_run_still_raises_on_a_real_error(
+        self, tmp_path: Path, brew_available: None
+    ) -> None:
+        manifest = tmp_path / 'Brewfile'
+        manifest.touch()
+        mgr = BrewManager()
+        with patch('athome.tools.managers.brew.subprocess.run') as mock_run:
+            mock_run.return_value.returncode = 2
+            mock_run.return_value.args = ['brew']
+            with pytest.raises(subprocess.CalledProcessError):
+                mgr.cleanup(manifest)
+
+    def test_force_does_not_tolerate_a_nonzero_exit(
+        self, tmp_path: Path, brew_available: None
+    ) -> None:
+        """With --force, exit 1 means the removal actually failed."""
+        manifest = tmp_path / 'Brewfile'
+        manifest.touch()
+        mgr = BrewManager()
+        with (
+            patch(
+                'athome.tools.managers.brew.subprocess.run',
+                side_effect=subprocess.CalledProcessError(1, ['brew']),
+            ),
+            pytest.raises(subprocess.CalledProcessError),
+        ):
+            mgr.cleanup(manifest, force=True)
 
     def test_force_appends_flag(self, tmp_path: Path, brew_available: None) -> None:
         manifest = tmp_path / 'Brewfile'
