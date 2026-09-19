@@ -290,8 +290,11 @@ class TestPathHelpers:
         assert p.stem == 'myprofile'
 
     def test_profile_state_path_is_db(self) -> None:
+        """Layer-agnostic contract only: the exact name depends on the layer the
+        suite happens to run on, and each layer is covered in isolation below."""
         p = profile_state_path('myprofile')
-        assert p.name == 'myprofile-state.db'
+        assert p.suffix == '.db'
+        assert p.name.startswith('myprofile')
 
     def test_profile_state_path_unsuffixed_on_native(self, tmp_path: Path) -> None:
         with (
