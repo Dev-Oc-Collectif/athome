@@ -61,6 +61,36 @@ class TestCollectBrewFragments:
         assert fragments == [('work/work.Brewfile.tmpl', 'brew "git"\n')]
         chezmoi.render_template.assert_called_once()
 
+    def test_collects_from_chezmoiroot_subdirectory(self, tmp_path: Path) -> None:
+        """A profile repo using `.chezmoiroot` keeps its fragments one level down.
+
+        Globbing the checkout root instead finds nothing, which silently reports
+        an empty declared set — and `brew bundle cleanup` against an empty
+        manifest means every installed package looks undeclared.
+        """
+        checkout = tmp_path / 'work'
+        checkout.mkdir()
+        (checkout / '.chezmoiroot').write_text('chezmoi\n')
+        _write_brewfile(checkout / 'chezmoi', 'work', 'brew "git"\n')
+        profile = ProfileConfig(name='work', source='url', destination=checkout)
+        chezmoi = MagicMock(spec=ChezmoiManager)
+
+        fragments = collect_brew_fragments(chezmoi, {'work': profile})
+
+        assert fragments == [('work/work.Brewfile', 'brew "git"\n')]
+
+    def test_ignores_fragments_left_at_the_checkout_root(self, tmp_path: Path) -> None:
+        """With `.chezmoiroot` set, the checkout root is not the source tree."""
+        checkout = tmp_path / 'work'
+        checkout.mkdir()
+        (checkout / '.chezmoiroot').write_text('chezmoi\n')
+        (checkout / 'chezmoi').mkdir()
+        _write_brewfile(checkout, 'stray', 'brew "stray"\n')
+        profile = ProfileConfig(name='work', source='url', destination=checkout)
+        chezmoi = MagicMock(spec=ChezmoiManager)
+
+        assert collect_brew_fragments(chezmoi, {'work': profile}) == []
+
     def test_no_fragments_yields_empty_list(self, tmp_path: Path) -> None:
         source = tmp_path / 'work'
         source.mkdir()

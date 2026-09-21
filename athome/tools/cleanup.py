@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from athome.definitions.config import ProfileConfig
-from athome.definitions.config import profile_source_path
+from athome.definitions.config import profile_source_root
 
 if TYPE_CHECKING:
     from athome.profiles.managers.chezmoi import ChezmoiManager
@@ -41,7 +41,7 @@ def _collect_fragments(
     """Return [(label, rendered_content), ...] for every matching fragment, sorted."""
     fragments: list[tuple[str, str]] = []
     for profile in profiles.values():
-        source = profile_source_path(profile)
+        source = profile_source_root(profile)
         paths = sorted(source.glob(f'{subdir}/*{suffix}')) + sorted(
             source.glob(f'{subdir}/*{suffix}.tmpl')
         )
