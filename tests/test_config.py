@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from athome.definitions.config import AthomeConfig
 from athome.definitions.config import ProfileConfig
 from athome.definitions.config import WorkspaceConfig
+from athome.definitions.config import layer
 from athome.definitions.config import load_config
 from athome.definitions.config import profile_config_path
 from athome.definitions.config import profile_source_path
@@ -231,6 +233,46 @@ _PWORK = ProfileConfig(name='work', source='url')
 _PPERSONAL = ProfileConfig(name='personal', source='url')
 
 
+class TestLayer:
+    def test_native_when_neither_marker_present(self, tmp_path: Path) -> None:
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', tmp_path / 'missing'),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', tmp_path / 'missing'),
+        ):
+            assert layer() == 'native'
+
+    def test_host_when_only_ostree_marker_present(self, tmp_path: Path) -> None:
+        ostree = tmp_path / 'ostree-booted'
+        ostree.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', tmp_path / 'missing'),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', ostree),
+        ):
+            assert layer() == 'host'
+
+    def test_dev_when_containerenv_present(self, tmp_path: Path) -> None:
+        containerenv = tmp_path / 'containerenv'
+        containerenv.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', containerenv),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', tmp_path / 'ostree-booted'),
+        ):
+            assert layer() == 'dev'
+
+    def test_dev_wins_when_both_markers_present(self, tmp_path: Path) -> None:
+        """Distrobox can share /run with an atomic host, so both markers may be visible
+        from inside the container — dev must win, matching .chezmoitemplates/layer."""
+        containerenv = tmp_path / 'containerenv'
+        containerenv.touch()
+        ostree = tmp_path / 'ostree-booted'
+        ostree.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', containerenv),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', ostree),
+        ):
+            assert layer() == 'dev'
+
+
 class TestPathHelpers:
     def test_profile_source_path_contains_profile_name(self) -> None:
         p = profile_source_path(_P)
@@ -248,8 +290,55 @@ class TestPathHelpers:
         assert p.stem == 'myprofile'
 
     def test_profile_state_path_is_db(self) -> None:
+        """Layer-agnostic contract only: the exact name depends on the layer the
+        suite happens to run on, and each layer is covered in isolation below."""
         p = profile_state_path('myprofile')
-        assert p.name == 'myprofile-state.db'
+        assert p.suffix == '.db'
+        assert p.name.startswith('myprofile')
+
+    def test_profile_state_path_unsuffixed_on_native(self, tmp_path: Path) -> None:
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', tmp_path / 'missing'),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', tmp_path / 'missing'),
+        ):
+            assert profile_state_path('myprofile').name == 'myprofile-state.db'
+
+    def test_profile_state_path_suffixed_on_host(self, tmp_path: Path) -> None:
+        ostree = tmp_path / 'ostree-booted'
+        ostree.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', tmp_path / 'missing'),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', ostree),
+        ):
+            assert profile_state_path('myprofile').name == 'myprofile-host-state.db'
+
+    def test_profile_state_path_suffixed_on_dev(self, tmp_path: Path) -> None:
+        containerenv = tmp_path / 'containerenv'
+        containerenv.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', containerenv),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', tmp_path / 'missing'),
+        ):
+            assert profile_state_path('myprofile').name == 'myprofile-dev-state.db'
+
+    def test_host_and_dev_state_paths_never_collide(self, tmp_path: Path) -> None:
+        ostree = tmp_path / 'ostree-booted'
+        ostree.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', tmp_path / 'missing'),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', ostree),
+        ):
+            host_path = profile_state_path('myprofile')
+
+        containerenv = tmp_path / 'containerenv'
+        containerenv.touch()
+        with (
+            patch('athome.definitions.config.CONTAINERENV_PATH', containerenv),
+            patch('athome.definitions.config.OSTREE_MARKER_PATH', tmp_path / 'missing'),
+        ):
+            dev_path = profile_state_path('myprofile')
+
+        assert host_path != dev_path
 
     def test_path_helpers_are_absolute(self) -> None:
         assert profile_source_path(_PX).is_absolute()
