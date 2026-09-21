@@ -11,7 +11,7 @@ from athome.definitions.managers.workspace import WorkspaceManager
 class TestTemplateEngineIsAbstract:
     def test_cannot_instantiate_directly(self) -> None:
         with pytest.raises(TypeError):
-            TemplateEngine()  # type: ignore[abstract]
+            TemplateEngine()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
     def test_full_implementation_instantiates(self) -> None:
         class Full(TemplateEngine):
@@ -35,7 +35,7 @@ class TestTemplateEngineIsAbstract:
 class TestGitManagerIsAbstract:
     def test_cannot_instantiate_directly(self) -> None:
         with pytest.raises(TypeError):
-            WorkspaceManager()  # type: ignore[abstract]
+            WorkspaceManager()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
     def test_full_implementation_instantiates(self) -> None:
         class Full(WorkspaceManager):
