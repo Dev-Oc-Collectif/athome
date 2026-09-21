@@ -10,6 +10,9 @@ from athome.definitions.managers.base import RequireInstalled
 
 _INSTALL_HINT = 'https://brew.sh/'
 
+# `brew bundle cleanup` without --force: 0 = nothing to do, 1 = listed work.
+_CLEANUP_DRY_RUN_OK = (0, 1)
+
 
 class BrewManager(BaseManager):
     """Developer tool manager backed by the Homebrew CLI.
@@ -53,8 +56,20 @@ class BrewManager(BaseManager):
 
         Without *force*, brew's own default behavior applies: list what would
         be removed without actually removing it.
+
+        That dry run exits 1 whenever it found something to remove — a report,
+        not a failure — so it is the one brew invocation that cannot go through
+        `_run`'s `check=True`. Letting it raise meant the listing succeeded only
+        when it had nothing to say, and otherwise surfaced as a traceback.
+        Anything other than 0 or 1 is still a real error.
         """
         args = ['bundle', 'cleanup', f'--file={manifest}']
         if force:
             args.append('--force')
-        self._run(*args)
+            self._run(*args)
+            return
+
+        self.fallback_require_tool()
+        result = subprocess.run(['brew', *args], check=False)  # noqa: S603 # nosec
+        if result.returncode not in _CLEANUP_DRY_RUN_OK:
+            raise subprocess.CalledProcessError(result.returncode, result.args)
