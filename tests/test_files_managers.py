@@ -224,6 +224,32 @@ class TestStatus:
         assert 'status' in cmd
 
 
+class TestManaged:
+    def test_calls_chezmoi_managed_with_files_only(self) -> None:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
+            mock_run.return_value.stdout = ''
+            mgr.managed(PROFILE)
+        cmd = mock_run.call_args[0][0]
+        assert 'managed' in cmd
+        assert '--include=files' in cmd
+        assert '--path-style=relative' in cmd
+
+    def test_returns_stdout_lines(self) -> None:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
+            mock_run.return_value.stdout = '.zshrc\n.gitconfig\n'
+            result = mgr.managed(PROFILE)
+        assert result == ['.zshrc', '.gitconfig']
+
+    def test_empty_output_yields_empty_list(self) -> None:
+        mgr = ChezmoiManager()
+        with patch('athome.profiles.managers.chezmoi.subprocess.run') as mock_run:
+            mock_run.return_value.stdout = ''
+            result = mgr.managed(PROFILE)
+        assert result == []
+
+
 class TestToolNotFound:
     def test_instantiation_never_raises_even_when_chezmoi_missing(self) -> None:
         """See TestBrewToolNotFound in test_brew_manager.py for why."""

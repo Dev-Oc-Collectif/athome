@@ -264,6 +264,51 @@ class TestDiff:
         mock_mgr.diff.assert_called_once_with(_FULL_CFG.profiles['work'])
 
 
+class TestConflicts:
+    def test_no_profiles_reports_no_conflicts(self) -> None:
+        with patch('athome.cli.profiles.load_config', return_value=_EMPTY_CFG):
+            result = runner.invoke(app, ['conflicts'])
+        assert result.exit_code == 0
+        assert 'No conflicts' in result.output
+
+    def test_uninitialized_profiles_are_skipped(self) -> None:
+        mock_mgr = _mock_manager(initialized=False)
+        with (
+            patch('athome.cli.profiles.load_config', return_value=_FULL_CFG),
+            patch('athome.cli.profiles._manager', mock_mgr),
+        ):
+            result = runner.invoke(app, ['conflicts'])
+        assert result.exit_code == 0
+        assert 'No conflicts' in result.output
+        mock_mgr.managed.assert_not_called()
+
+    def test_disjoint_targets_report_no_conflicts(self) -> None:
+        mock_mgr = _mock_manager(initialized=True)
+        mock_mgr.managed.side_effect = lambda profile: (
+            ['.zshrc'] if profile.name == 'work' else ['.config/other']
+        )
+        with (
+            patch('athome.cli.profiles.load_config', return_value=_FULL_CFG),
+            patch('athome.cli.profiles._manager', mock_mgr),
+        ):
+            result = runner.invoke(app, ['conflicts'])
+        assert result.exit_code == 0
+        assert 'No conflicts' in result.output
+
+    def test_shared_target_is_reported_and_exits_one(self) -> None:
+        mock_mgr = _mock_manager(initialized=True)
+        mock_mgr.managed.return_value = ['.zshrc']
+        with (
+            patch('athome.cli.profiles.load_config', return_value=_FULL_CFG),
+            patch('athome.cli.profiles._manager', mock_mgr),
+        ):
+            result = runner.invoke(app, ['conflicts'])
+        assert result.exit_code == 1
+        assert '.zshrc' in result.output
+        assert 'work' in result.output
+        assert 'personal' in result.output
+
+
 class TestStatus:
     def test_unknown_profile_exits_one(self) -> None:
         with patch('athome.cli.profiles.load_config', return_value=_EMPTY_CFG):
