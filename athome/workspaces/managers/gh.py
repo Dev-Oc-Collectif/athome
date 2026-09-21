@@ -21,9 +21,11 @@ class GhManager(WorkspaceManager):
     REQUIRES = [RequireInstalled('gh', _INSTALL_HINT)]
 
     def _run(self, *args: str) -> None:
+        self.fallback_require_tool()
         subprocess.run(['gh', *args], check=True)  # noqa: S603 # nosec
 
     def _git(self, *args: str) -> None:
+        self.fallback_require_tool()
         subprocess.run(['git', *args], check=True)  # noqa: S603 # nosec
 
     def list_repos(self, owner: str | None = None) -> None:
@@ -47,6 +49,7 @@ class GhManager(WorkspaceManager):
         is cloned on first run or updated via `git pull` on subsequent runs.
         Non-destructive: existing local modifications are never discarded.
         """
+        self.fallback_require_tool()
         destination.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(  # noqa: S603 # nosec
             [

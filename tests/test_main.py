@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess  # nosec
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -55,6 +57,37 @@ class TestHelp:
         result = runner.invoke(app, [])
         # no_args_is_help=True shows help and exits 2 in Typer 0.25
         assert 'athome' in result.output or result.exit_code in (0, 2)
+
+
+class TestHelpWithoutAnyRequiredTool:
+    """Regression test: `athome.cli.main` builds its Typer app by importing
+    every cli submodule (brew, profiles, repo, ...) up front, and each of
+    those modules constructs its manager (BrewManager, ChezmoiManager,
+    GhManager) at module scope. If manager construction still checked tool
+    presence, merely *importing* the CLI — e.g. running `athome --help` —
+    would crash on any machine missing brew/chezmoi/gh, even though `--help`
+    never touches any of them.
+
+    This has to be a genuinely fresh process: the managers are already
+    constructed by the time this test file's own top-level `from
+    athome.cli.main import app` has run, so patching `shutil.which` in this
+    process wouldn't re-exercise import-time construction at all.
+    """
+
+    def test_help_works_with_no_tools_on_path(self) -> None:
+        # /usr/bin:/bin for `git` — a baseline OS guarantee athome always
+        # assumes is present, never something it installs or checks for —
+        # plus the venv's own bin dir so `python` itself still resolves.
+        # brew/chezmoi/gh must stay unreachable: that's the actual bug.
+        path = f'{Path(sys.executable).parent}:/usr/bin:/bin'
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, '-c', 'from athome.cli.main import app; app()', '--help'],
+            env={'PATH': path},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
 
 
 class TestCreateAlias:

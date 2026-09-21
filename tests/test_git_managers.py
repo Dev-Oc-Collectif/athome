@@ -181,25 +181,33 @@ class TestCreateRepo:
 
 
 class TestToolNotFound:
-    def test_raises_at_instantiation_when_gh_missing(self) -> None:
+    def test_instantiation_never_raises_even_when_gh_missing(self) -> None:
+        """See TestBrewToolNotFound in test_brew_manager.py for why."""
+        with patch(_BASE_PATCH, return_value=None):
+            GhManager()
+
+    def test_raises_on_first_use_when_gh_missing(self) -> None:
+        mgr = GhManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError),
         ):
-            GhManager()
+            mgr.list_repos()
 
     def test_error_names_gh(self) -> None:
+        mgr = GhManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            GhManager()
+            mgr.list_repos()
         assert 'gh' in exc_info.value.format_message()
 
     def test_error_includes_install_hint(self) -> None:
+        mgr = GhManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            GhManager()
+            mgr.list_repos()
         assert 'cli.github.com' in exc_info.value.format_message()

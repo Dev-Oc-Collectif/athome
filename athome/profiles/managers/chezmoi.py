@@ -33,11 +33,13 @@ class ChezmoiManager(BaseManager):
         ]
 
     def _run(self, profile: ProfileConfig, *args: str) -> None:
+        self.fallback_require_tool()
         cmd: list[str] = ['chezmoi', *self._profile_flags(profile), *args]
         subprocess.run(cmd, check=True)  # noqa: S603 # nosec
 
     def render_template(self, profile: ProfileConfig, template_path: Path) -> str:
         """Render *template_path* (a .tmpl file) through *profile*'s chezmoi templating."""
+        self.fallback_require_tool()
         cmd = ['chezmoi', *self._profile_flags(profile), 'execute-template']
         result = subprocess.run(  # noqa: S603 # nosec
             cmd,

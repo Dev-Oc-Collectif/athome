@@ -113,25 +113,39 @@ class TestBrewCleanup:
 
 
 class TestBrewToolNotFound:
-    def test_raises_at_instantiation_when_brew_missing(self) -> None:
+    def test_instantiation_never_raises_even_when_brew_missing(self) -> None:
+        """Constructing a manager must not require its tool to be present.
+
+        athome.cli modules build their managers eagerly at import time, so a
+        check here would mean merely importing athome's CLI — e.g. running
+        `athome --help` — fails on any machine missing *any* required tool,
+        even for a command that never touches this manager.
+        """
+        with patch(_BASE_PATCH, return_value=None):
+            BrewManager()
+
+    def test_raises_on_first_use_when_brew_missing(self) -> None:
+        mgr = BrewManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError),
         ):
-            BrewManager()
+            mgr.list_tools()
 
     def test_error_message_names_tool(self) -> None:
+        mgr = BrewManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            BrewManager()
+            mgr.list_tools()
         assert 'brew' in exc_info.value.format_message()
 
     def test_error_includes_install_hint(self) -> None:
+        mgr = BrewManager()
         with (
             patch(_BASE_PATCH, return_value=None),
             pytest.raises(ToolNotFoundError) as exc_info,
         ):
-            BrewManager()
+            mgr.list_tools()
         assert 'brew.sh' in exc_info.value.format_message()
