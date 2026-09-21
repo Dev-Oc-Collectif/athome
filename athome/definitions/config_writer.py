@@ -92,6 +92,11 @@ def add_template(
     _add_entry(path, ('templates',), name, entry)
 
 
+def add_destination(target: str, *, path: Path = CONFIG_PATH) -> None:
+    """Set [workspace] destination — the default clone target for all providers."""
+    _add_entry(path, ('workspace',), 'destination', target)
+
+
 def add_owner(name: str, source: str, *, path: Path = CONFIG_PATH) -> None:
     """Add a [workspace.owners] entry."""
     _add_entry(path, ('workspace', 'owners'), name, source)

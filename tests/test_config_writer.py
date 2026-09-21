@@ -59,6 +59,21 @@ class TestAddTemplate:
             config_writer.add_template('python', 'https://github.com/other/template', path=p)
 
 
+class TestAddDestination:
+    def test_creates_workspace_section_from_scratch(self, tmp_path: Path) -> None:
+        p = tmp_path / 'config.toml'
+        config_writer.add_destination('~/project', path=p)
+        content = p.read_text()
+        assert '[workspace]' in content
+        assert 'destination = "~/project"' in content
+
+    def test_duplicate_raises(self, tmp_path: Path) -> None:
+        p = tmp_path / 'config.toml'
+        config_writer.add_destination('~/project', path=p)
+        with pytest.raises(ConfigEntryExistsError):
+            config_writer.add_destination('~/other', path=p)
+
+
 class TestAddOwner:
     def test_creates_nested_workspace_owners_table(self, tmp_path: Path) -> None:
         p = tmp_path / 'config.toml'
