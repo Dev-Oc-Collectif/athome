@@ -14,6 +14,7 @@ from athome.definitions.config import ProfileConfig
 from athome.profiles.managers.chezmoi import ChezmoiManager
 from athome.tools.cleanup import build_combined_brewfile
 from athome.tools.cleanup import collect_brew_fragments
+from athome.tools.cleanup import collect_devbox_packages
 from athome.tools.cleanup import run_mise_prune
 
 runner = CliRunner()
@@ -254,3 +255,44 @@ class TestCleanupCommand:
             result = runner.invoke(app, ['cleanup', '--skip-mise'])
         assert result.exit_code == 0
         mock_prune.assert_not_called()
+
+
+def _write_dnf(profile_root: Path, name: str, content: str) -> None:
+    pkg_d = profile_root / 'dot_config' / 'devbox' / 'pkg.d'
+    pkg_d.mkdir(parents=True, exist_ok=True)
+    (pkg_d / f'{name}.dnf').write_text(content)
+
+
+class TestCollectDevboxPackages:
+    def test_collects_and_strips_comments(self, tmp_path: Path) -> None:
+        source = tmp_path / 'work'
+        _write_dnf(source, 'work', '# toolchain\ngcc\n\nlibpq-devel  # inline\n')
+        profile = ProfileConfig(name='work', source='url', destination=source)
+
+        packages = collect_devbox_packages(MagicMock(spec=ChezmoiManager), {'work': profile})
+
+        assert packages == {'gcc', 'libpq-devel'}
+
+    def test_unions_across_profiles(self, tmp_path: Path) -> None:
+        a, b = tmp_path / 'a', tmp_path / 'b'
+        _write_dnf(a, 'a', 'gcc\n')
+        _write_dnf(b, 'b', 'gcc\nportaudio-devel\n')
+        profiles = {
+            'a': ProfileConfig(name='a', source='url', destination=a),
+            'b': ProfileConfig(name='b', source='url', destination=b),
+        }
+
+        packages = collect_devbox_packages(MagicMock(spec=ChezmoiManager), profiles)
+
+        assert packages == {'gcc', 'portaudio-devel'}
+
+    def test_honours_chezmoiroot(self, tmp_path: Path) -> None:
+        checkout = tmp_path / 'work'
+        checkout.mkdir()
+        (checkout / '.chezmoiroot').write_text('chezmoi\n')
+        _write_dnf(checkout / 'chezmoi', 'work', 'gcc\n')
+        profile = ProfileConfig(name='work', source='url', destination=checkout)
+
+        packages = collect_devbox_packages(MagicMock(spec=ChezmoiManager), {'work': profile})
+
+        assert packages == {'gcc'}

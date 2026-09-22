@@ -8,6 +8,7 @@ from athome.cli import bootstrap
 from athome.cli import brew
 from athome.cli import cleanup
 from athome.cli import config
+from athome.cli import devbox
 from athome.cli import mise
 from athome.cli import profiles
 from athome.cli import repo
@@ -29,6 +30,11 @@ app.add_typer(
 )
 app.add_typer(brew.app, name='brew', help='Manage developer tools (brew).')
 app.add_typer(mise.app, name='mise', help='Keep mise configuration aligned across profiles.')
+app.add_typer(
+    devbox.app,
+    name='devbox',
+    help='Provision the development container (dnf in distrobox).',
+)
 app.add_typer(system.app, name='system', help='System health checks.')
 app.add_typer(config.app, name='config', help='Manage athome configuration.')
 

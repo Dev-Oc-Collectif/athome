@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from athome.profiles.managers.chezmoi import ChezmoiManager
 
 BREW_FILED_DIR = 'dot_config/brew/file.d'
+DEVBOX_PKGD_DIR = 'dot_config/devbox/pkg.d'
 
 
 def _render(chezmoi: ChezmoiManager, profile: ProfileConfig, fragment: Path) -> str:
@@ -56,6 +57,23 @@ def collect_brew_fragments(
 ) -> list[tuple[str, str]]:
     """Return every Brewfile fragment across configured profiles."""
     return _collect_fragments(chezmoi, profiles, BREW_FILED_DIR, '.Brewfile')
+
+
+def collect_devbox_packages(
+    chezmoi: ChezmoiManager, profiles: dict[str, ProfileConfig]
+) -> set[str]:
+    """Return every dnf package declared across configured profiles.
+
+    Fragments are plain lists, one package per line, `#` for comments — the
+    same shape as the Brewfile fragments, using the dev box's native manager.
+    """
+    packages: set[str] = set()
+    for _label, content in _collect_fragments(chezmoi, profiles, DEVBOX_PKGD_DIR, '.dnf'):
+        for raw in content.splitlines():
+            line = raw.split('#', 1)[0].strip()
+            if line:
+                packages.add(line)
+    return packages
 
 
 def build_combined_brewfile(fragments: list[tuple[str, str]]) -> str:
